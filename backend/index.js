@@ -3,7 +3,6 @@ import { db } from './db/config.js';
 import { mainRouter } from './src/api/routes.js';
 import { errorHandler } from './src/middleware/error-handler.js';
 import cors from 'cors';
-
 const app = express();
 const port = process.env.PORT || 3777;
 
@@ -18,7 +17,6 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', mainRouter);
-
 app.use(errorHandler);
 
 // Start server
@@ -26,7 +24,6 @@ const startServer = async () => {
   try {
     // Test database connection
     const connection = await db.getConnection();
-
     console.log('Database connection established successfully.');
     connection.release();
 
