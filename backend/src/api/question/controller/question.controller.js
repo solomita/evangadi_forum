@@ -1,6 +1,12 @@
 import { StatusCodes } from 'http-status-codes';
 import { getSimilarQuestionsService } from '../service/question.service.js';
 
+/**
+ * Get questions similar to the provided question hash.
+ *
+ * @route GET /api/questions/:questionHash/similar
+ * @access Protected
+ */
 export const getSimilarQuestionsController = async (
   req,
   res,
