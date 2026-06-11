@@ -88,9 +88,9 @@ export const createAnswerService = async ({ questionId, content, userId }) => {
       INNER JOIN users u
         ON a.user_id = u.user_id
       WHERE a.answer_id = ?
+      LIMIT 1
     `,
     [answerId],
-  );
 
   const row = rows[0];
 
