@@ -92,8 +92,11 @@ export const createAnswerService = async ({ questionId, content, userId }) => {
     `,
     [answerId],
 
-  const row = rows[0];
+  if (!rows || rows.length === 0) {
+    throw new NotFoundError("Created answer not found");
+  }
 
+  const row = rows[0];
   return {
     id: row.id,
     questionId: row.questionId,
