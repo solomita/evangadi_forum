@@ -1,4 +1,4 @@
-import { StatusCodes } from 'http-status-codes';
+import { StatusCodes } from "http-status-codes";
 
 class CustomAPIError extends Error {
   constructor(message) {
@@ -31,6 +31,13 @@ export class ServiceUnavailableError extends CustomAPIError {
   constructor(message) {
     super(message);
     this.statusCode = StatusCodes.SERVICE_UNAVAILABLE; // 503
+  }
+}
+
+export class ConflictError extends CustomAPIError {
+  constructor(message) {
+    super(message);
+    this.statusCode = StatusCodes.CONFLICT; // 409
   }
 }
 
