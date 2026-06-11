@@ -12,6 +12,7 @@ export const createAnswerService = async ({ questionId, content, userId }) => {
       SELECT question_id, user_id
       FROM questions
       WHERE question_id = ?
+      LIMIT 1
     `,
     [questionId],
   );
