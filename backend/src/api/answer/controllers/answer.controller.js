@@ -1,4 +1,4 @@
-// src/api/answers/answer.controller.js
+// src/api/answer/controllers/answer.controller.js
 
 import { createAnswerService } from "../service/answer.service.js";
 
