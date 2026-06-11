@@ -28,9 +28,6 @@ export const createAnswerService = async ({ questionId, content, userId }) => {
   if (Number(question.user_id) === Number(userId)) {
     throw new BadRequestError("You cannot answer your own question");
   }
-  // if (question.user_id === userId) {
-  //   throw new BadRequestError("You cannot answer your own question");
-  // }
 
   // Check duplicate answer
   const existingAnswers = await safeExecute(
