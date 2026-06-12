@@ -6,11 +6,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext'; 
+import { apiClient } from '../../services/core/api.client.js';
 import { User, Clock, AlertCircle, Loader2, PenSquare, BarChart2, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import styles from './Dashboard.module.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3777';
+ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3777';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -20,7 +21,6 @@ export default function Dashboard() {
   const [questions, setQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
   const [stats, setStats] = useState({
     totalQuestions: 0,
     totalReplies: 0,
@@ -33,23 +33,9 @@ export default function Dashboard() {
     setError(null);
 
     try {
-      const url = `${API_BASE_URL}/api/questions`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Server responded with an error status');
-      }
-
-      const result = await response.json();
-      const extractedQuestions = result.data || result || [];
-      setQuestions(extractedQuestions);
-      
+       const response = await apiClient.get('/api/questions');
+       const extractedQuestions = response.data?.data ?? response.data ?? [];
+           setQuestions(extractedQuestions);
       const totalQ = extractedQuestions.length;
       const totalR = extractedQuestions.reduce((acc, curr) => acc + (curr.answerCount || 0), 0);
       const unansweredQ = extractedQuestions.filter(q => !q.answerCount || q.answerCount === 0).length;
@@ -72,7 +58,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchQuestions();
-  }, []);
+  }, [user?.id]);
 
   const formatTimestamp = (dateString) => {
     const date = new Date(dateString);
@@ -95,7 +81,11 @@ export default function Dashboard() {
 
         {/* FIXED: Unified Orange Branding Matrix Icons Applied Explicitly Here */}
         <section className={styles.quickNavigationActionGrid}>
-          <div onClick={() => navigate('/questions/ask')} className={styles.actionNavCard}>
+                  <button
+             type="button"
+             onClick={() => navigate('/questions/ask')}
+             className={styles.actionNavCard}
+           >
             <div className={styles.iconCircleWrapper}>
               <PenSquare size={20} />
             </div>
@@ -103,9 +93,13 @@ export default function Dashboard() {
               <h4>New question</h4>
               <p>Share context, errors, and what you already tried</p>
             </div>
-          </div>
+                </button>
 
-          <div onClick={() => navigate('/your-topics')} className={styles.actionNavCard}>
+                     <button
+             type="button"
+             onClick={() => navigate('/my-questions')}
+             className={styles.actionNavCard}
+           >
             <div className={styles.iconCircleWrapper}>
               <BarChart2 size={20} />
             </div>
@@ -113,9 +107,13 @@ export default function Dashboard() {
               <h4>Your topics</h4>
               <p>Filtered list of threads you authored</p>
             </div>
-          </div>
+                    </button>
 
-          <div onClick={() => navigate('/knowledge-base')} className={styles.actionNavCard}>
+                    <button
+             type="button"
+             onClick={() => navigate('/rag-documents')}
+             className={styles.actionNavCard}
+           >
             <div className={styles.iconCircleWrapper}>
               <BookOpen size={20} />
             </div>
@@ -123,7 +121,7 @@ export default function Dashboard() {
               <h4>Knowledge base</h4>
               <p>Course library, uploads, and retrieval-backed context for threads</p>
             </div>
-          </div>
+                  </button>
         </section>
 
         <section className={styles.analyticsSectionDataGroup}>
@@ -170,19 +168,27 @@ export default function Dashboard() {
           {isLoading ? (
             <div className={styles.loadingBox}>
               <Loader2 className={styles.spinner} />
-              <p>Loading recent questions...</p>
+              <p>loading recent question</p>
             </div>
           ) : error ? (
             <div className={styles.errorBox}>
               <AlertCircle className={styles.errorIcon} />
               <div>
-                <strong>Failed to load questions</strong>
+                <strong>Failed to load question</strong>
                 <p>{error}</p>
               </div>
             </div>
           ) : questions.length === 0 ? (
             <div className={styles.preciseEmptyDottedStateCardBox}>
-              <p>No questions found. Be the first to ask!</p>
+              <p>No question found.{' '} 
+                     <button
+                   type="button"
+                   className={styles.emptyLink}
+                   onClick={() => navigate('/questions/ask')}
+                 >
+                   Be the first to ask!
+                 </button>
+                </p>
             </div>
           ) : (
             <div className={styles.questionsWrapper}>
@@ -191,10 +197,18 @@ export default function Dashboard() {
                 return (
                   <motion.div
                     key={question.id || index}
+                    role="button"
+                     tabIndex={0}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.15, delay: Math.min(index * 0.03, 0.25) }}
-                    onClick={() => navigate(`/questions/${question.questionHash}`)}
+                    onClick={() => navigate(`/question/${question.id}`)}
+                     onKeyDown={e => {
+                       if (e.key === 'Enter' || e.key === ' ') {
+                         e.preventDefault();
+                         navigate(`/question/${question.id}`);
+                       }
+                     }}
                     className={`${styles.card} ${isUserOwnedThread ? styles.userOwnedAccentBorderCard : ''}`}
                   >
                     <div className={styles.cardLayout}>

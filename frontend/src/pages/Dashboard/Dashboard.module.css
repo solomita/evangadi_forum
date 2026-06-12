@@ -225,6 +225,15 @@
   margin: 0;
 }
 
+ .emptyLink {
+   background: none;
+   border: none;
+   padding: 0;
+   color: #ea580c;
+   font-weight: 700;
+   cursor: pointer;
+   text-decoration: underline;
+ }
 /* Active List Matrix Rows Layout styling rules */
 .questionsWrapper {
   display: flex;
@@ -358,6 +367,16 @@
   font-size: 0.875rem;
 }
 
+.errorIcon {
+   color: #ef4444;
+   margin-bottom: 0.75rem;
+ }
+ .authorName {
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   max-width: 14rem;
+ }
 .spinner {
   color: #ea580c;
   animation: rotateSpin 0.8s linear infinite;
