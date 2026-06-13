@@ -1,11 +1,10 @@
-import { GoogleGenAI } from '@google/genai';
-import { safeExecute } from '../../../../db/config.js';
-import { ServiceUnavailableError } from '../../../utils/errors/index.js';
+import { GoogleGenAI } from "@google/genai";
+import { safeExecute } from "../../../../db/config.js";
+import { ServiceUnavailableError } from "../../../utils/errors/index.js";
 
-// Fail fast on startup if API key is missing
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY environment variable is required');
+  throw new Error("GEMINI_API_KEY environment variable is required");
 }
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -20,13 +19,17 @@ export const getQuestionByHash = async (questionHash) => {
   return rows[0] || null;
 };
 
-export const evaluateAnswerFit = async (questionTitle, questionBody, draftAnswer) => {
+export const evaluateAnswerFit = async (
+  questionTitle,
+  questionBody,
+  draftAnswer,
+) => {
   const prompt = `
 You are an expert evaluator for a community Q&A forum.
 A user has written a draft answer to the following question:
 
 QUESTION TITLE: ${questionTitle}
-QUESTION BODY: ${questionBody || 'No additional description provided.'}
+QUESTION BODY: ${questionBody || "No additional description provided."}
 
 DRAFT ANSWER:
 ${draftAnswer}
@@ -46,39 +49,33 @@ Scoring guide:
 `;
 
   const response = await ai.models.generateContent({
-    model: process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash-lite',
+    model: process.env.GEMINI_TEXT_MODEL || "gemini-2.5-flash-lite",
     contents: prompt,
   });
 
-  // Check if response is empty
   const rawText = response.text?.trim();
   if (!rawText) {
-    throw new ServiceUnavailableError('Gemini returned an empty response');
+    throw new ServiceUnavailableError("Gemini returned an empty response");
   }
 
-  // Clean markdown code blocks if Gemini wraps response in them
-  const cleaned = rawText.replace(/```json|```/g, '').trim();
+  const cleaned = rawText.replace(/```json|```/g, "").trim();
 
-  // Parse safely
   let parsed;
   try {
     parsed = JSON.parse(cleaned);
   } catch (err) {
-    throw new ServiceUnavailableError(
-      'Gemini returned invalid JSON: ' + rawText.slice(0, 100)
-    );
+    throw new ServiceUnavailableError("Gemini returned invalid JSON");
   }
 
-  // Validate the shape
   if (
-    typeof parsed.score !== 'number' ||
+    typeof parsed.score !== "number" ||
     parsed.score < 0 ||
     parsed.score > 100 ||
-    typeof parsed.feedback !== 'string' ||
+    typeof parsed.feedback !== "string" ||
     !parsed.feedback.trim()
   ) {
     throw new ServiceUnavailableError(
-      'Gemini response missing valid score or feedback'
+      "Gemini response missing valid score or feedback",
     );
   }
 

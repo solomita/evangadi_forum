@@ -1,4 +1,8 @@
-import { getQuestionByHash, evaluateAnswerFit } from '../survice/answer-fit.service.js';
+import {
+  getQuestionByHash,
+  evaluateAnswerFit,
+} from "../service/answer-fit.service.js";
+import { NotFoundError } from "../../../utils/errors/index.js";
 
 const answerFitController = async (req, res, next) => {
   try {
@@ -7,17 +11,16 @@ const answerFitController = async (req, res, next) => {
 
     const question = await getQuestionByHash(questionHash);
     if (!question) {
-      return res.status(404).json({ success: false, message: 'Question not found' });
+      throw new NotFoundError("Question not found");
     }
 
     const { score, feedback } = await evaluateAnswerFit(
       question.title,
       question.content,
-      draftAnswer
+      draftAnswer,
     );
 
     return res.status(200).json({ success: true, data: { score, feedback } });
-
   } catch (error) {
     next(error);
   }
