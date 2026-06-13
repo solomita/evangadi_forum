@@ -29,44 +29,39 @@ export const createAnswerService = async ({ questionId, content, userId }) => {
     throw new BadRequestError("You cannot answer your own question");
   }
 
-  // Check duplicate answer
-  const existingAnswers = await safeExecute(
-    `
-      SELECT answer_id
-      FROM answers
-      WHERE question_id = ?
-      AND user_id = ?
-      LIMIT 1
-    `,
-    [questionId, userId],
-  );
-
-  if (existingAnswers.length > 0) {
-    throw new ConflictError("You have already answered this question");
+  // Insert answer — the UNIQUE KEY on (question_id, user_id) enforces
+  // the one-answer-per-user constraint atomically at the DB level,
+  // avoiding the SELECT→INSERT race condition.
+  let result;
+  try {
+    result = await safeExecute(
+      `
+        INSERT INTO answers
+        (
+          question_id,
+          user_id,
+          content,
+          created_at,
+          updated_at
+        )
+        VALUES
+        (
+          ?,
+          ?,
+          ?,
+          NOW(),
+          NOW()
+        )
+      `,
+      [questionId, userId, content],
+    );
+  } catch (err) {
+    // MySQL duplicate-entry error: unique constraint on (question_id, user_id)
+    if (err.code === "ER_DUP_ENTRY") {
+      throw new ConflictError("You have already answered this question");
+    }
+    throw err;
   }
-
-  // Insert answer
-  const result = await safeExecute(
-    `
-      INSERT INTO answers
-      (
-        question_id,
-        user_id,
-        content,
-        created_at,
-        updated_at
-      )
-      VALUES
-      (
-        ?,
-        ?,
-        ?,
-        NOW(),
-        NOW()
-      )
-    `,
-    [questionId, userId, content],
-  );
 
   const answerId = result.insertId;
 
@@ -89,6 +84,7 @@ export const createAnswerService = async ({ questionId, content, userId }) => {
       LIMIT 1
     `,
     [answerId],
+  );
 
   if (!rows || rows.length === 0) {
     throw new NotFoundError("Created answer not found");

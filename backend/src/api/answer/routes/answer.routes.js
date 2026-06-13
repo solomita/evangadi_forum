@@ -2,7 +2,7 @@ import express from "express";
 
 import { authenticateUser as authenticate } from "../../../middleware/authentication.js";
 
-import { createAnswerController } from "../controllers/answer.controller.js";
+import { createAnswerController } from "../controller/answer.controller.js";
 import { createAnswerValidation } from "../validations/answer.validation.js";
 
 const router = express.Router();
