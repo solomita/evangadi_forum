@@ -3,8 +3,15 @@ import { safeExecute } from "../../../../db/config.js";
 import { BadRequestError } from "../../../utils/errors/index.js";
 
 // Initialize Gemini SDK with apiKey
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+if (!GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY environment variable is required");
+}
+
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
+  apiKey: GEMINI_API_KEY,
 });
 
 /**
@@ -54,11 +61,12 @@ export const searchQuestionsSemanticService = async ({
   k,
   threshold,
 }) => {
-  const limit = k !== undefined ? k : parseInt(process.env.RECOMM_K || "5", 10);
+  const limit =
+    k !== undefined ? k : parseInt(process.env.RECOMMEND_K || "5", 10);
   const searchThreshold =
     threshold !== undefined
       ? threshold
-      : parseFloat(process.env.RECOMM_THRESHOLD || "0.75");
+      : parseFloat(process.env.RECOMMEND_THRESHOLD || "0.75");
 
   // 1. Generate query embedding via Gemini
   const model = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
@@ -72,7 +80,7 @@ export const searchQuestionsSemanticService = async ({
       },
     });
 
-    // 🌟 OFFICIAL @GOOGLE/GENAI SDK SPECIFIC EXTRACTION 🌟
+    // OFFICIAL @GOOGLE/GENAI SDK SPECIFIC EXTRACTION
     if (response?.embedding?.values) {
       queryVector = response.embedding.values;
     } else if (response?.values) {
@@ -89,10 +97,7 @@ export const searchQuestionsSemanticService = async ({
       !Array.isArray(queryVector) ||
       queryVector.length === 0
     ) {
-      console.error(
-        "Gemini Response Unwrapping Failed. Raw output was:",
-        response,
-      );
+      console.error("Gemini Response Unwrapping Failed. ");
       throw new Error("Invalid embedding response structure from Gemini API");
     }
   } catch (error) {
@@ -102,10 +107,17 @@ export const searchQuestionsSemanticService = async ({
     );
   }
 
-  // 2. Fetch all ready vectors from the database
+  // Define a strict upper ceiling configuration for memory threshold
+  const VECTOR_CANDIDATE_LIMIT = 500;
+
+  // 2. Fetch a safely bounded set of ready vectors from the database
   const vectors = await safeExecute(
-    "SELECT question_id, embedding FROM question_vectors WHERE status = 'ready'",
-    [],
+    `SELECT question_id, embedding 
+   FROM question_vectors 
+   WHERE status = 'ready' 
+   ORDER BY created_at DESC 
+   LIMIT ?`,
+    [VECTOR_CANDIDATE_LIMIT],
   );
 
   // 3. Compute cosine similarity for each vector
