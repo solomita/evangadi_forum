@@ -4,9 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext'; 
-import { apiClient } from '../../services/core/api.client.js';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { questionService } from '../../services/question/question.service.js';
 import { User, Clock, AlertCircle, Loader2, PenSquare, BarChart2, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import styles from './Dashboard.module.css';
@@ -15,6 +15,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const firstName = user?.firstName?.trim() || 'Learner';
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [questions, setQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,21 +32,37 @@ export default function Dashboard() {
     setError(null);
 
     try {
-         const response = await apiClient.get('/api/questions');
-         const extractedQuestions = response.data?.questions ?? response.data?.data ?? [];
-         setQuestions(extractedQuestions);
+      const params = new URLSearchParams(location.search);
+      const keyword = (params.get('q') || '').trim();
+      const semantic = (params.get('semantic') || '').trim();
+
+      let extractedQuestions = [];
+
+      if (semantic.length >= 3) {
+        const semanticResponse = await questionService.searchQuestionsSemantic({
+          query: semantic,
+          k: 20,
+          threshold: 0.2,
+        });
+        extractedQuestions = semanticResponse.data;
+      } else if (keyword.length > 0) {
+        extractedQuestions = await questionService.getQuestions({ search: keyword });
+      } else {
+        extractedQuestions = await questionService.getQuestions();
+      }
+
+      setQuestions(extractedQuestions);
       const totalQ = extractedQuestions.length;
       const totalR = extractedQuestions.reduce((acc, curr) => acc + (curr.answerCount || 0), 0);
       const unansweredQ = extractedQuestions.filter(q => !q.answerCount || q.answerCount === 0).length;
-        const userQ = extractedQuestions.filter(q => q.userId === user?.id || q.isUserOwned).length;
+      const userQ = extractedQuestions.filter(q => q.userId === user?.id || q.isUserOwned).length;
 
       setStats({
         totalQuestions: totalQ,
         totalReplies: totalR,
         unanswered: unansweredQ,
-        userQuestions: userQ
+        userQuestions: userQ,
       });
-      
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to fetch questions. Please try again.');
@@ -56,7 +73,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchQuestions();
-  }, [user?.id]);
+  }, [user?.id, location.search]);
 
   const formatTimestamp = (dateString) => {
     const date = new Date(dateString);

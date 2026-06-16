@@ -61,6 +61,46 @@ async function getQuestions(filters = {}) {
 }
 
 /**
+ * Fetches semantically similar questions using embedding search.
+ * @param {{ query: string, k?: number, threshold?: number }} params
+ */
+async function searchQuestionsSemantic(params) {
+  try {
+    const response = await apiClient.get('/api/questions/search', {
+      params,
+    });
+
+    return {
+      data: response.data?.data || [],
+      meta: response.data?.meta || null,
+    };
+  } catch (error) {
+    throw handleQuestionError(error);
+  }
+}
+
+/**
+ * Fetches similar questions for a question hash.
+ * @param {string} questionHash
+ * @param {{ k?: number, threshold?: number }} params
+ */
+async function getSimilarQuestions(questionHash, params = {}) {
+  try {
+    const response = await apiClient.get(
+      `/api/questions/${questionHash}/similar`,
+      { params },
+    );
+
+    return {
+      data: response.data?.data || [],
+      meta: response.data?.meta || null,
+    };
+  } catch (error) {
+    throw handleQuestionError(error);
+  }
+}
+
+/**
  * Fetches a single question and its answers by hash.
  * @param {string} questionHash
  */
@@ -130,6 +170,8 @@ async function generateQuestionDraftCoach(draftData) {
  */
 export const questionService = {
   getQuestions,
+  searchQuestionsSemantic,
+  getSimilarQuestions,
   getSingleQuestion,
   createQuestion,
   postAnswer,

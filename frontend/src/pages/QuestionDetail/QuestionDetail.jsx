@@ -39,19 +39,18 @@ export default function QuestionDetail() {
       setError(null);
 
       try {
-        const [questionData, allQuestions] = await Promise.all([
+        const [questionData, similarResult] = await Promise.all([
           questionService.getSingleQuestion(questionHash),
-          questionService.getQuestions(),
+          questionService.getSimilarQuestions(questionHash, {
+            k: 5,
+            threshold: 0.72,
+          }),
         ]);
 
         if (!isMounted) return;
 
         setQuestion(questionData);
-        setRelatedQuestions(
-          (allQuestions || [])
-            .filter(item => item.questionHash !== questionHash)
-            .slice(0, 5),
-        );
+        setRelatedQuestions(similarResult?.data || []);
       } catch (err) {
         if (!isMounted) return;
         setError(err.message || 'Failed to load question details.');

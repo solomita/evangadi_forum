@@ -4,12 +4,16 @@ import {
   createQuestionValidation,
   draftCoachValidation,
   getQuestionsValidation,
+  getSimilarQuestionsValidation,
+  searchQuestionsValidation,
   getSingleQuestionValidation,
 } from "../validations/question.validation.js";
 import {
   createQuestionController,
   generateQuestionDraftCoachController,
+  getSimilarQuestionsController,
   getQuestionsController,
+  searchQuestionsSemanticController,
   getSingleQuestionController,
 } from "../controller/question.controller.js";
 
@@ -34,6 +38,20 @@ questionRoute.post(
   authenticateUser,
   draftCoachValidation,
   generateQuestionDraftCoachController,
+);
+
+questionRoute.get(
+  "/search",
+  authenticateUser,
+  searchQuestionsValidation,
+  searchQuestionsSemanticController,
+);
+
+questionRoute.get(
+  "/:questionHash/similar",
+  authenticateUser,
+  getSimilarQuestionsValidation,
+  getSimilarQuestionsController,
 );
 
 questionRoute.get(

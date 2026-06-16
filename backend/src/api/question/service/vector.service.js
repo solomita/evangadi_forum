@@ -7,8 +7,9 @@ const ai = new GoogleGenAI({
 });
 
 const normalizeWhiteSpaces = (value) => value.replace(/\s+/g, " ").trim();
-export const normalizeQuestionText = ({ title }) => {
-  return normalizeWhiteSpaces(`${title || ""}`.normalize("NFKC").toLowerCase());
+export const normalizeQuestionText = ({ title, content }) => {
+  const combined = `${title || ""}\n${content || ""}`;
+  return normalizeWhiteSpaces(combined.normalize("NFKC").toLowerCase());
 };
 
 
@@ -90,7 +91,7 @@ export const storeQuestionVector = async ({
     source_text=VALUES(source_text),
     embedding=VALUES(embedding),
     status=VALUES(status),
-    update_at=CURRENT_TIMESTAMP`;
+    updated_at=CURRENT_TIMESTAMP`;
   try {
     await safeExecute(sql, [questionId, sourceText, embeddingJson, status]);
   } catch (err) {
