@@ -115,6 +115,7 @@ export const searchQuestionsSemanticController = async (req, res, next) => {
       meta: {
         ...result.meta,
         query,
+        questionHash: null,
       },
     });
   } catch (error) {
@@ -139,6 +140,7 @@ export const getSimilarQuestionsController = async (req, res, next) => {
       data: result.data,
       meta: {
         ...result.meta,
+        query: null,
         questionHash,
       },
     });
