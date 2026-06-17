@@ -184,6 +184,23 @@ const fetchQuestionDetailsByIds = async (ids) => {
   return safeExecute(detailsSql, ids);
 };
 
+const toQuestionWithAuthor = (question) => {
+  if (!question) {
+    return question;
+  }
+
+  const { userId, firstName, lastName, ...rest } = question;
+
+  return {
+    ...rest,
+    author: {
+      id: userId,
+      firstName,
+      lastName,
+    },
+  };
+};
+
 const searchQuestionsLexicalFallback = async ({ query, limit }) => {
   return getQuestionsService({ search: query }).then((rows) => rows.slice(0, limit));
 };
@@ -406,7 +423,7 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
   }
 
   const limit = Math.max(1, Math.min(20, toNumberOrFallback(k, 5)));
-  const searchThreshold = Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.2)));
+  const searchThreshold = Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.75)));
 
   const normalizedText = normalizeQuestionText({ title: normalizedQuery });
   const { embedding: queryEmbedding } = await generateQuestionEmbedding(normalizedText, {
@@ -428,13 +445,11 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
     });
 
     return {
-      data: fallbackData,
+      data: fallbackData.map(toQuestionWithAuthor),
       meta: {
         total: fallbackData.length,
         k: limit,
         threshold: searchThreshold,
-        fallbackApplied: true,
-        fallbackReason: "no_ready_vectors",
       },
     };
   }
@@ -466,13 +481,11 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
     });
 
     return {
-      data: fallbackData,
+      data: fallbackData.map(toQuestionWithAuthor),
       meta: {
         total: fallbackData.length,
         k: limit,
         threshold: searchThreshold,
-        fallbackApplied: true,
-        fallbackReason: "no_vector_matches",
       },
     };
   }
@@ -490,7 +503,7 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
       }
 
       return {
-        ...question,
+        ...toQuestionWithAuthor(question),
         score: item.score,
       };
     })
@@ -502,7 +515,6 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
       total: data.length,
       k: limit,
       threshold: searchThreshold,
-      fallbackApplied: thresholdMatches.length === 0,
     },
   };
 };
@@ -539,13 +551,11 @@ export const getSimilarQuestionsService = async ({ questionHash, k, threshold })
     });
 
     return {
-      data: fallbackData,
+      data: fallbackData.map(toQuestionWithAuthor),
       meta: {
         total: fallbackData.length,
         k: Math.max(1, Math.min(20, toNumberOrFallback(k, 5))),
-        threshold: Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.2))),
-        fallbackApplied: true,
-        fallbackReason: "source_vector_missing",
+        threshold: Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.75))),
       },
     };
   }
@@ -559,19 +569,17 @@ export const getSimilarQuestionsService = async ({ questionHash, k, threshold })
     });
 
     return {
-      data: fallbackData,
+      data: fallbackData.map(toQuestionWithAuthor),
       meta: {
         total: fallbackData.length,
         k: Math.max(1, Math.min(20, toNumberOrFallback(k, 5))),
-        threshold: Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.2))),
-        fallbackApplied: true,
-        fallbackReason: "source_vector_invalid",
+        threshold: Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.75))),
       },
     };
   }
 
   const limit = Math.max(1, Math.min(20, toNumberOrFallback(k, 5)));
-  const searchThreshold = Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.2)));
+  const searchThreshold = Math.max(0, Math.min(1, toNumberOrFallback(threshold, 0.75)));
 
   const candidateSql = `
     SELECT qv.question_id AS questionId, qv.embedding
@@ -607,13 +615,11 @@ export const getSimilarQuestionsService = async ({ questionHash, k, threshold })
     });
 
     return {
-      data: fallbackData,
+      data: fallbackData.map(toQuestionWithAuthor),
       meta: {
         total: fallbackData.length,
         k: limit,
         threshold: searchThreshold,
-        fallbackApplied: true,
-        fallbackReason: "no_vector_matches",
       },
     };
   }
@@ -631,7 +637,7 @@ export const getSimilarQuestionsService = async ({ questionHash, k, threshold })
       }
 
       return {
-        ...question,
+        ...toQuestionWithAuthor(question),
         score: item.score,
       };
     })
@@ -643,7 +649,6 @@ export const getSimilarQuestionsService = async ({ questionHash, k, threshold })
       total: data.length,
       k: limit,
       threshold: searchThreshold,
-      fallbackApplied: thresholdMatches.length === 0,
     },
   };
 };
