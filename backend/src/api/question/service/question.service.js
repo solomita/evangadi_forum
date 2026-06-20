@@ -443,11 +443,11 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
 
   const normalizedText = normalizeQuestionText({ title: normalizedQuery });
 
-  // Run embedding generation and AI answer in parallel — both use Gemini but are independent.
-  const [{ embedding: queryEmbedding }, aiAnswer] = await Promise.all([
-    generateQuestionEmbedding(normalizedText, { taskType: "RETRIEVAL_QUERY" }),
-    generateAIAnswer(normalizedQuery),
-  ]);
+  // Embedding must come first; AI answer and DB fetch run in parallel after that
+  // to avoid hitting Gemini rate limits with two simultaneous requests.
+  const { embedding: queryEmbedding } = await generateQuestionEmbedding(normalizedText, {
+    taskType: "RETRIEVAL_QUERY",
+  });
 
   const vectorsSql = `
     SELECT qv.question_id AS questionId, qv.embedding
@@ -455,7 +455,10 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
     WHERE qv.status = 'ready'
   `;
 
-  const vectorRows = await safeExecute(vectorsSql, []);
+  const [vectorRows, aiAnswer] = await Promise.all([
+    safeExecute(vectorsSql, []),
+    generateAIAnswer(normalizedQuery),
+  ]);
 
   if (vectorRows.length === 0) {
     const fallbackData = await searchQuestionsLexicalFallback({ query: normalizedQuery, limit });

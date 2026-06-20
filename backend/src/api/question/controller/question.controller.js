@@ -74,6 +74,7 @@ export const searchQuestionsSemanticController = async (req, res, next) => {
       success: true,
       message: "Semantic search completed successfully.",
       data: result.data,
+      aiAnswer: result.aiAnswer ?? null,
       meta: { ...result.meta, query, questionHash: null },
     });
   } catch (error) {
