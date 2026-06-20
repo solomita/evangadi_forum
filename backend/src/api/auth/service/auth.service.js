@@ -1,15 +1,16 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { safeExecute } from '../../../../db/config.js';
+import bcrypt from 'bcryptjs'; // For password hashing
+import { StatusCodes } from 'http-status-codes'; // For standardized HTTP status codes
+import jwt from 'jsonwebtoken'; // For token generation and verification
+import { safeExecute } from '../../../../db/config.js';// For executing database queries safely
 import {
   BadRequestError,
   NotFoundError,
   UnauthenticatedError,
-} from '../../../utils/errors/index.js';
+} from '../../../utils/errors/index.js'; // Custom error classes for consistent error handling
 import {
   sendConfirmationEmail,
   sendPasswordResetEmail,
-} from '../../../utils/mailer.js';
+} from '../../../utils/mailer.js'; // Utility functions for sending emails
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';

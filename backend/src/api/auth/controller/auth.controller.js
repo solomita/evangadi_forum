@@ -1,10 +1,11 @@
-import { StatusCodes } from 'http-status-codes';
+import { StatusCodes } from 'http-status-codes'; // Importing HTTP status codes for standardized response statuses.
+// Importing service functions that contain the business logic for authentication operations.
 import {
-  registerService,
-  loginService,
-  confirmEmailService,
-  forgotPasswordService,
-  resetPasswordService,
+  registerService, // Service function to handle user registration logic.
+  loginService, // Service function to handle user login logic and token generation.
+  confirmEmailService, // Service function to handle email confirmation logic using a token.
+  forgotPasswordService, // Service function to handle forgot password logic and token generation.
+  resetPasswordService, // Service function to handle password reset logic using a token.
 } from '../service/auth.service.js';
 
 /**
@@ -52,11 +53,13 @@ export const loginController = async (req, res, next) => {
   }
 };
 
+/**
+ * Handles email confirmation requests.
+ */
 export const confirmEmailController = async (req, res, next) => {
   try {
-    const { token } = req.body;
-    const result = await confirmEmailService({ token });
-
+    const { token } = req.body; // The token is expected to be sent in the request body for email confirmation.
+    const result = await confirmEmailService({ token }); // Call the service function to confirm the email using the provided token.
     res.status(StatusCodes.OK).json({
       success: true,
       message: 'Email confirmed successfully.',
@@ -66,7 +69,8 @@ export const confirmEmailController = async (req, res, next) => {
     next(error);
   }
 };
-
+/** * Handles forgot password requests.
+ */
 export const forgotPasswordController = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -81,7 +85,8 @@ export const forgotPasswordController = async (req, res, next) => {
     next(error);
   }
 };
-
+/** * Handles fetching questions list with optional filters.
+ */
 export const resetPasswordController = async (req, res, next) => {
   try {
     const { token, newPassword } = req.body;
