@@ -4,6 +4,8 @@ import {
   createQuestionValidation,
   draftCoachValidation,
   getQuestionsValidation,
+  getSimilarQuestionsValidation,
+  searchQuestionsValidation,
   getSingleQuestionValidation,
   searchQuestionsValidation,
   similarQuestionsValidation,
@@ -11,8 +13,9 @@ import {
 import {
   createQuestionController,
   generateQuestionDraftCoachController,
-  getQuestionsController,
   getSimilarQuestionsController,
+  getQuestionsController,
+  searchQuestionsSemanticController,
   getSingleQuestionController,
   searchQuestionsSemanticController,
 } from "../controller/question.controller.js";
@@ -25,10 +28,25 @@ questionRoute.post("/", authenticateUser, createQuestionValidation, createQuesti
 
 questionRoute.post("/draft-coach", authenticateUser, draftCoachValidation, generateQuestionDraftCoachController);
 
-questionRoute.get("/search", authenticateUser, searchQuestionsValidation, searchQuestionsSemanticController);
+questionRoute.get(
+  "/search",
+  authenticateUser,
+  searchQuestionsValidation,
+  searchQuestionsSemanticController,
+);
 
-questionRoute.get("/:questionHash", authenticateUser, getSingleQuestionValidation, getSingleQuestionController);
+questionRoute.get(
+  "/:questionHash/similar",
+  authenticateUser,
+  getSimilarQuestionsValidation,
+  getSimilarQuestionsController,
+);
 
-questionRoute.get("/:questionHash/similar", authenticateUser, similarQuestionsValidation, getSimilarQuestionsController);
+questionRoute.get(
+  "/:questionHash",
+  authenticateUser,
+  getSingleQuestionValidation,
+  getSingleQuestionController,
+);
 
 export default questionRoute;

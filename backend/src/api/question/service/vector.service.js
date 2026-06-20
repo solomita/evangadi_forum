@@ -4,30 +4,10 @@ import { GoogleGenAI } from "@google/genai"; // Google Gemini API client
 import { safeExecute } from "../../../../db/config.js"; // For executing database queries safely with parameter validation
 import "dotenv/config"; // Load environment variables from .env file, including GEMINI_API_KEY and model names
 
-
-// Initialize the Google Gemini client with the API key from environment variables.
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); 
-
-// The name of the Gemini text model to use for generating embeddings and AI answers. It can be configured via environment variables, with a default fallback.
-const GEMINI_TEXT_MODEL =
-  process.env.GEMINI_TEXT_MODEL || "gemini-2.5-flash-lite";
-
-// ---------------------------------------------------------------------------
-// Embedding cache
-//
-// Storing all embeddings in a module-level Map avoids hitting the DB and
-// running JSON.parse on every search request. The cache is invalidated when a
-// new embedding is written so results stay consistent. Float32Array halves the
-// memory footprint vs plain number[] for 768-dim vectors (4 bytes vs 8 bytes
-// per element).
-// ---------------------------------------------------------------------------
-
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-const embeddingCache = {
-  // questionId (number) -> Float32Array
-  vectors: new Map(),
-  loadedAt: 0,
+const normalizeWhiteSpaces = (value) => value.replace(/\s+/g, " ").trim();
+export const normalizeQuestionText = ({ title, content }) => {
+  const combined = `${title || ""}\n${content || ""}`;
+  return normalizeWhiteSpaces(combined.normalize("NFKC").toLowerCase());
 };
 // Checks if the embedding cache is still valid based on the defined TTL. If the cache is stale, it will be reloaded from the database on the next search request.
 const isCacheWarm = () =>
@@ -304,11 +284,16 @@ export const storeQuestionVector = async ({
     INSERT INTO question_vectors (question_id, source_text, embedding, status)
     VALUES (?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
-      source_text  = VALUES(source_text),
-      embedding    = VALUES(embedding),
-      status       = VALUES(status),
-      updated_at   = CURRENT_TIMESTAMP
-  `;
+    source_text=VALUES(source_text),
+    embedding=VALUES(embedding),
+    status=VALUES(status),
+    updated_at=CURRENT_TIMESTAMP`;
+  try {
+    await safeExecute(sql, [questionId, sourceText, embeddingJson, status]);
+  } catch (err) {
+    throw err;
+  }
+};
 
   await safeExecute(sql, [
     questionId,

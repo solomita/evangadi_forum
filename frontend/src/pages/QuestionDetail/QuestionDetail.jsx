@@ -39,15 +39,18 @@ export default function QuestionDetail() {
       setError(null);
 
       try {
-        const [questionData, similarQuestions] = await Promise.all([
+        const [questionData, similarResult] = await Promise.all([
           questionService.getSingleQuestion(questionHash),
-          questionService.getSimilarQuestions(questionHash),
+          questionService.getSimilarQuestions(questionHash, {
+            k: 5,
+            threshold: 0.72,
+          }),
         ]);
 
         if (!isMounted) return;
 
         setQuestion(questionData);
-        setRelatedQuestions(similarQuestions);
+        setRelatedQuestions(similarResult?.data || []);
       } catch (err) {
         if (!isMounted) return;
         setError(err.message || 'Failed to load question details.');

@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { questionService } from '../../services/question/question.service.js';
-import { User, Clock, AlertCircle, Loader2, PenSquare, BarChart2, BookOpen, Sparkles, X } from 'lucide-react';
+import { User, Clock, AlertCircle, Loader2, PenSquare, BarChart2, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import styles from './Dashboard.module.css';
 
@@ -79,9 +79,37 @@ export default function Dashboard() {
     setError(null);
     setAiAnswer(null);
     try {
-      const list = await questionService.getQuestions({ search: query });
-      setQuestions(list);
-      computeStats(list);
+      const params = new URLSearchParams(location.search);
+      const keyword = (params.get('q') || '').trim();
+      const semantic = (params.get('semantic') || '').trim();
+
+      let extractedQuestions = [];
+
+      if (semantic.length >= 3) {
+        const semanticResponse = await questionService.searchQuestionsSemantic({
+          query: semantic,
+          k: 20,
+          threshold: 0.2,
+        });
+        extractedQuestions = semanticResponse.data;
+      } else if (keyword.length > 0) {
+        extractedQuestions = await questionService.getQuestions({ search: keyword });
+      } else {
+        extractedQuestions = await questionService.getQuestions();
+      }
+
+      setQuestions(extractedQuestions);
+      const totalQ = extractedQuestions.length;
+      const totalR = extractedQuestions.reduce((acc, curr) => acc + (curr.answerCount || 0), 0);
+      const unansweredQ = extractedQuestions.filter(q => !q.answerCount || q.answerCount === 0).length;
+      const userQ = extractedQuestions.filter(q => q.userId === user?.id || q.isUserOwned).length;
+
+      setStats({
+        totalQuestions: totalQ,
+        totalReplies: totalR,
+        unanswered: unansweredQ,
+        userQuestions: userQ,
+      });
     } catch (err) {
       setError(err.message || 'Failed to fetch questions. Please try again.');
     } finally {
@@ -89,23 +117,9 @@ export default function Dashboard() {
     }
   };
 
-  const runSemanticSearch = async (query) => {
-    setIsLoading(true);
-    setError(null);
-    setAiAnswer(null);
-    try {
-      const { data, aiAnswer: answer } = await questionService.searchQuestionsSemantic(query);
-      setQuestions(data);
-      computeStats(data);
-      setAiAnswer(answer);
-    } catch (err) {
-      setError(err.message || 'AI search failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const clearSearch = () => navigate('/dashboard');
+  useEffect(() => {
+    fetchQuestions();
+  }, [user?.id, location.search]);
 
   const formatTimestamp = (dateString) => {
     const date = new Date(dateString);
