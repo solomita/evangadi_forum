@@ -3,6 +3,7 @@ import { safeExecute } from "../../../../db/config.js";
 import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
 import {
   generateQuestionEmbedding,
+  generateAIAnswer,
   normalizeQuestionText,
   storeQuestionVector,
 } from "./vector.service.js";
@@ -454,13 +455,14 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
   const vectorRows = await safeExecute(vectorsSql, []);
 
   if (vectorRows.length === 0) {
-    const fallbackData = await searchQuestionsLexicalFallback({
-      query: normalizedQuery,
-      limit,
-    });
+    const [fallbackData, aiAnswer] = await Promise.all([
+      searchQuestionsLexicalFallback({ query: normalizedQuery, limit }),
+      generateAIAnswer(normalizedQuery),
+    ]);
 
     return {
       data: fallbackData.map(toQuestionWithAuthor),
+      aiAnswer,
       meta: {
         total: fallbackData.length,
         k: limit,
@@ -490,13 +492,14 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
   const top = ranked.slice(0, limit);
 
   if (top.length === 0) {
-    const fallbackData = await searchQuestionsLexicalFallback({
-      query: normalizedQuery,
-      limit,
-    });
+    const [fallbackData, aiAnswer] = await Promise.all([
+      searchQuestionsLexicalFallback({ query: normalizedQuery, limit }),
+      generateAIAnswer(normalizedQuery),
+    ]);
 
     return {
       data: fallbackData.map(toQuestionWithAuthor),
+      aiAnswer,
       meta: {
         total: fallbackData.length,
         k: limit,
@@ -526,6 +529,7 @@ export const searchQuestionsSemanticService = async ({ query, k, threshold }) =>
 
   return {
     data,
+    aiAnswer: null,
     meta: {
       total: data.length,
       k: limit,
