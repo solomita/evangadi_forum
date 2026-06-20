@@ -31,7 +31,7 @@ export const createQuestionWithVectorService = async ({ userId, title, content }
   ]);
 
   const questionId = insertResult.insertId;
-  const sourceText = normalizeQuestionText({ title });
+  const sourceText = normalizeQuestionText({ title, content });
 
   try {
     const { embedding } = await generateQuestionEmbedding(sourceText, {
@@ -44,7 +44,11 @@ export const createQuestionWithVectorService = async ({ userId, title, content }
       embedding,
       status: "ready",
     });
-  } catch {
+  } catch (err) {
+    console.warn(
+      `[vector] Embedding failed for question ${questionId} — stored with status=failed:`,
+      err.message,
+    );
     await storeQuestionVector({
       questionId,
       sourceText,
