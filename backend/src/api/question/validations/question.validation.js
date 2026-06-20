@@ -132,32 +132,6 @@ export const getSingleQuestionValidation = [
     .matches(/^[a-f0-9]{16}$/)
     .withMessage("Question hash must be a 16-character lowercase hex string"),
 
-  validationErrorHandler,
-];
-
-export const searchQuestionsValidation = [
-  query("query")
-    .notEmpty()
-    .withMessage("Query is required")
-    .bail()
-    .isString()
-    .withMessage("Query must be a string")
-    .bail()
-    .trim()
-    .isLength({ min: 5 })
-    .withMessage("Query must be at least 5 characters"),
-
-  query("k")
-    .optional()
-    .isInt({ min: 1, max: 20 })
-    .withMessage("k must be an integer between 1 and 20")
-    .toInt(),
-
-  query("threshold")
-    .optional()
-    .isFloat({ min: 0, max: 1 })
-    .withMessage("threshold must be a number between 0 and 1")
-    .toFloat(),
 
   validationErrorHandler,
 ];

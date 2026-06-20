@@ -5,6 +5,7 @@ export const getDocumentFileController = async (req, res, next) => {
   try {
     const { documentId } = req.params;
     const userId = req.user.id;
+    
 
     const document = await getDocumentFileService({ documentId, userId });
 

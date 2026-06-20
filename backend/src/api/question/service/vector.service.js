@@ -69,13 +69,6 @@ const generateAIAnswer = async (query) => {
   }
 };
 
-const normalizeWhiteSpaces = (value) => value.replace(/\s+/g, " ").trim();
-
-export const normalizeQuestionText = ({ title, content }) => {
-  const combined = `${title || ""} ${content || ""}`;
-  return normalizeWhiteSpaces(combined.normalize("NFKC").toLowerCase());
-};
-
 export const generateQuestionEmbedding = async (sourceText, options = {}) => {
   const { taskType = "RETRIEVAL_DOCUMENT" } = options;
 
@@ -264,12 +257,10 @@ export const getSimilarQuestionsService = async ({
   return rows
     .map((row) => ({ ...row, score: scoreMap.get(row.id) ?? 0 }))
     .sort((a, b) => b.score - a.score);
+
+  // New embedding written — next search must reload the cache.
+  if (!isFailed) invalidateEmbeddingCache();
 };
-
-// ---------------------------------------------------------------------------
-// Store / upsert vector
-// ---------------------------------------------------------------------------
-
 export const storeQuestionVector = async ({
   questionId,
   sourceText,
@@ -288,12 +279,6 @@ export const storeQuestionVector = async ({
     embedding=VALUES(embedding),
     status=VALUES(status),
     updated_at=CURRENT_TIMESTAMP`;
-  try {
-    await safeExecute(sql, [questionId, sourceText, embeddingJson, status]);
-  } catch (err) {
-    throw err;
-  }
-};
 
   await safeExecute(sql, [
     questionId,

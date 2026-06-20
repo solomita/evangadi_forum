@@ -1,9 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import {
   createQuestionWithVectorService,
-  getSimilarQuestionsService,
   getQuestionsService,
-  searchQuestionsSemanticService,
   getSingleQuestionService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
@@ -138,53 +136,3 @@ export const generateQuestionDraftCoachController = async (req, res, next) => {
   }
 };
 
-export const searchQuestionsSemanticController = async (req, res, next) => {
-  try {
-    const { query, k, threshold } = req.query;
-
-    const result = await searchQuestionsSemanticService({
-      query,
-      k,
-      threshold,
-    });
-
-    res.status(StatusCodes.OK).json({
-      success: true,
-      message: "Semantic search completed successfully.",
-      data: result.data,
-      meta: {
-        ...result.meta,
-        query,
-        questionHash: null,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getSimilarQuestionsController = async (req, res, next) => {
-  try {
-    const { questionHash } = req.params;
-    const { k, threshold } = req.query;
-
-    const result = await getSimilarQuestionsService({
-      questionHash,
-      k,
-      threshold,
-    });
-
-    res.status(StatusCodes.OK).json({
-      success: true,
-      message: "Similar questions fetched successfully.",
-      data: result.data,
-      meta: {
-        ...result.meta,
-        query: null,
-        questionHash,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
