@@ -44,7 +44,7 @@ export default function Dashboard() {
         let aiAnswerText = null;
 
         if (semanticQuery) {
-          const result = await questionService.searchQuestionsSemantic(semanticQuery, { k: 10, threshold: 0.5 });
+          const result = await questionService.searchQuestionsSemantic(semanticQuery, { k: 10, threshold: 0.75 });
           list = result.data || [];
           aiAnswerText = result.aiAnswer || null;
         } else if (keywordQuery) {
