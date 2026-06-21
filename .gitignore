@@ -1,0 +1,18 @@
+# OS files
+AppData/
+*.log
+*.tmp
+
+# IDEs
+.vscode/
+.idea/
+.cursor/
+
+# Node / Python envs
+node_modules/
+.env
+.env.local
+
+# System junk
+.DS_Store
+Thumbs.db
