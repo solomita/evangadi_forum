@@ -15,7 +15,7 @@ const uploadPdf = multer({
   storage: storage,
   limits: {
     // Limits file size to exactly 10MB as requested
-    filesize: 10 * 1024 * 1024,
+    filesize: 10* 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
     // step 3: Check that the file is an actual PDF
@@ -40,22 +40,4 @@ export const handlePdfUpload = async (req, res, next) => {
   });
 };
 
-// Step 5 Gracefully  catch Multer errors as specified in the doc
-export const createDocumentMulterErrorHandler = (err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    // Handle specific Multer errors (e.g., file too large)
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "File too large. Maximum size is 10MB.",
-        });
-    }
-    return res.status(400).json({ success: false, error: err.message });
-  } else if (err) {
-    // Handle the custom BadRequestError from the fileFilter
-    return res.status(400).json({ success: false, error: err.message });
-  }
-  next();
-};
+
