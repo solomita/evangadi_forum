@@ -39,19 +39,18 @@ export default function QuestionDetail() {
       setError(null);
 
       try {
-        const [questionData, allQuestions] = await Promise.all([
+        const [questionData, similarResult] = await Promise.all([
           questionService.getSingleQuestion(questionHash),
-          questionService.getQuestions(),
+          questionService.getSimilarQuestions(questionHash, {
+            k: 5,
+            threshold: 0.75,
+          }),
         ]);
 
         if (!isMounted) return;
 
         setQuestion(questionData);
-        setRelatedQuestions(
-          (allQuestions || [])
-            .filter(item => item.questionHash !== questionHash)
-            .slice(0, 5),
-        );
+        setRelatedQuestions(similarResult || []);
       } catch (err) {
         if (!isMounted) return;
         setError(err.message || 'Failed to load question details.');
@@ -212,11 +211,12 @@ export default function QuestionDetail() {
                 <article key={answer.id} className={styles.answerCard}>
                   <div className={styles.answerHeader}>
                     <div className={styles.answerAvatar}>
-                      {answer.author?.firstName?.[0] || 'U'}
+                      {(answer.user?.firstName || answer.author?.firstName)?.[0] || 'U'}
                     </div>
                     <div>
                       <p className={styles.answerAuthor}>
-                        {answer.author?.firstName} {answer.author?.lastName}
+                        {answer.user?.firstName || answer.author?.firstName}{' '}
+                        {answer.user?.lastName || answer.author?.lastName}
                       </p>
                       <p className={styles.answerDate}>
                         {answer.createdAt
@@ -323,7 +323,7 @@ export default function QuestionDetail() {
               >
                 <p className={styles.relatedTitle}>{item.title}</p>
                 <div className={styles.relatedMeta}>
-                  <span>{item.firstName} {item.lastName}</span>
+                  <span>{item.author?.firstName || item.firstName} {item.author?.lastName || item.lastName}</span>
                   <span>
                     {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                   </span>
