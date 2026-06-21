@@ -1,3 +1,4 @@
+import fs from "fs/promises";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
 
@@ -26,6 +27,10 @@ export const deleteDocumentService = async ({ documentId, userId }) => {
   if (Number(document.user_id) !== Number(userId)) {
     throw new NotFoundError("Document not found");
   }
+
+  // Remove the PDF from disk before deleting the DB row, so a failure here
+  // doesn't leave an orphaned file with no record pointing at it.
+  await fs.unlink(document.storage_path);
 
   // Delete the record. ON DELETE CASCADE on document_chunks (and in turn
   // document_chunk_vectors) removes all chunks and embeddings automatically.
