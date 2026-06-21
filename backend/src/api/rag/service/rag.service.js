@@ -11,9 +11,7 @@ export const getDocumentMetaService = async (documentId, userId) => {
       status,
       error_message,
       created_at,
-      updated_at,
-       user_id,
-         storage_path
+      updated_at
     FROM documents
     WHERE document_id = ? AND user_id = ?
   `;
