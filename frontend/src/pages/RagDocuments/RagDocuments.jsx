@@ -62,10 +62,15 @@ export default function RagDocuments() {
     if (selected && activeTab === "preview") {
       loadPdf();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.document_id, activeTab]);
+
+  // Revoke blob URLs when they change / on unmount
+  useEffect(() => {
     return () => {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     };
-  }, [selected, activeTab]);
+  }, [pdfUrl]);
 
   useEffect(() => {
     if (
