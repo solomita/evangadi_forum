@@ -7,14 +7,16 @@ const storage = multer.diskStorage({
   destination: "uploads/",
   filename: (req, file, cb) => {
     // Step 2 : Ensure unique filenames to prevent overwriting
-    const uniqueName = Date.now() + "-" + file.originalname;
+    const safeOriginalName = (file.originalName || "upload.pdf").replace(/[^a-zA-Z0-9.-]/g, "_");
+    const uniqueName = Date.now() + "-" + safeOriginalName;
+    
     cb(null, uniqueName);
   },
 });
 const uploadPdf = multer({
   storage: storage,
   limits: {
-    // Limits file size to exactly 10MB as requested
+    // Limits file size to 10MB 
     filesize: 10 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
@@ -42,20 +44,15 @@ export const handlePdfUpload = async (req, res, next) => {
 
 // Step 5 Gracefully  catch Multer errors as specified in the doc
 export const createDocumentMulterErrorHandler = (err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    // Handle specific Multer errors (e.g., file too large)
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "File too large. Maximum size is 10MB.",
-        });
-    }
-    return res.status(400).json({ success: false, error: err.message });
-  } else if (err) {
-    // Handle the custom BadRequestError from the fileFilter
-    return res.status(400).json({ success: false, error: err.message });
+  if(!err) return next();
+
+  if(err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"){
+    err.statusCode = 400;
+    err.message = "File too large. Maximum size is 10MB.";
+    return next(err);
   }
-  next();
+
+  // BadRequestError from fileFilter already has statusCode; default others to 400
+  err.statusCode = err.statusCode || 400;
+  return next(err);
 };

@@ -11,10 +11,14 @@ const ai = new GoogleGenAI({apiKey:GEMINI_API_KEY})
 
 export const getDocumentEmbedding = async (text)=>{
 
+  if(!GEMINI_API_KEY){
+    throw new BadRequestError("Gemini API key is not configured");
+  }
+
   const result = await ai.models.embedContent({
     model: EMBEDDING_MODEL,
     contents: text,
-    config: { taskType: "RETRIEVAL_DOCUMENT" },
+    config: { taskType: "RETRIEVAL_DOCUMENT", outputDimensionality: 768 },
   });
 
   const values = result.embeddings?.[0].values ?? result.embeddings?.values;
@@ -25,10 +29,15 @@ export const getDocumentEmbedding = async (text)=>{
 }
 
 export const getQueryEmbedding = async (text) => {
+
+  if (!GEMINI_API_KEY) {
+    throw new BadRequestError("Gemini API key is not configured");
+  }
+
   const result = await ai.models.embedContent({
     model: EMBEDDING_MODEL,
     contents: text,
-    config: { taskType: "RETRIEVAL_QUERY" },
+    config: { taskType: "RETRIEVAL_QUERY", outputDimensionality: 768 },
   });
 
   const values = result.embeddings?.[0].values ?? result.embeddings?.values;
@@ -132,4 +141,4 @@ Ensure the output is valid JSON and nothing else.`;
   } catch (error) {
     throw new Error(`Gemini text generation failed: ${error.message}`);
   }
-};
+};
