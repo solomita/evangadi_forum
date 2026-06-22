@@ -497,15 +497,10 @@ export default function RagDocuments() {
 
     fetchDocuments();
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.document_id, activeTab]);
-
-  // Revoke blob URLs when they change / on unmount
-  useEffect(() => {
     return () => {
       cancelled = true;
     };
-  }, [pdfUrl]);
+  }, []);
 
   useEffect(() => {
     if (
@@ -736,12 +731,10 @@ export default function RagDocuments() {
 
                     <button
                       type="button"
-                      type="button"
                       className={styles.deleteBtn}
                       onClick={() => handleDelete(doc.document_id)}
                       aria-label={`Delete ${doc.title || `document ${doc.document_id}`}`}
                       title="Delete"
-                      aria-label="Delete document"
                     >
                       🗑️
                     </button>
@@ -777,181 +770,6 @@ export default function RagDocuments() {
               </p>
             </div>
           ) : (
-            <div className={styles.docContainer}>
-              {/* DOC HEADER */}
-              <div className={styles.docHeader}>
-                <h3 className={styles.docTitle}>Reader</h3>
-                <div className={styles.docMeta}>
-                  Ready • {formatBytes(selected.byte_size)}
-                </div>
-              </div>
-              {/* READER + SEARCH + ASK layout (show preview and tools together) */}
-              <div className={styles.readerLayout}>
-                <div className={styles.previewArea}>
-                  {previewLoading ? (
-                    <div className={styles.loadingMsg}>
-                      Loading document preview...
-                    </div>
-                  ) : previewError ? (
-                    <div className={styles.errorMsg}>{previewError}</div>
-                  ) : pdfUrl ? (
-                    <iframe
-                      src={pdfUrl}
-                      title="PDF Preview"
-                      className={styles.pdfFrame}
-                    />
-                  ) : (
-                    <div className={styles.readerBox}>
-                      Choose a document from the library to open the reader and
-                      preview the file.
-                    </div>
-                  )}
-                </div>
-
-                <div className={styles.toolsArea}>
-                  <section className={styles.section}>
-                    <h4 className={styles.sectionTitle}>Semantic search</h4>
-                    <p className={styles.small}>
-                      Finds passages by meaning (embeddings), not only exact
-                      keywords.
-                    </p>
-                    <label
-                      className={styles.inputLabel}
-                      htmlFor="rag-search-query"
-                    >
-                      Search query
-                    </label>
-                    <div className={styles.searchRow}>
-                      <input
-                        id="rag-search-query"
-                        className={styles.searchInput}
-                        placeholder="Describe the topic or phrase you are looking for"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      className={styles.searchBtn}
-                      onClick={handleSearch}
-                      disabled={
-                        !selected || searchLoading || !searchQuery.trim()
-                      }
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden
-                      >
-                        <path
-                          d="M21 21l-4.35-4.35"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <circle
-                          cx="11"
-                          cy="11"
-                          r="6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      {searchLoading ? "Searching..." : "Search"}
-                    </button>
-                    {searchError && (
-                      <div className={styles.errorMsg}>{searchError}</div>
-                    )}
-                    {!searchLoading &&
-                      searchSubmitted &&
-                      searchResults.length === 0 && (
-                        <div className={styles.emptyMsg}>
-                          No matching passages were found.
-                        </div>
-                      )}
-                    {searchResults.length > 0 && (
-                      <div className={styles.resultsList}>
-                        {searchResults.map((chunk, idx) => (
-                          <div
-                            key={idx}
-                            className={`${styles.resultItem} ${styles.resultItemAnimated}`}
-                            style={{ animationDelay: `${idx * 80}ms` }}
-                          >
-                            <p className={styles.resultScore}>
-                              Relevance: {(chunk.similarity || 0).toFixed(2)}
-                            </p>
-                            <p className={styles.resultText}>{chunk.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-
-                  <section className={styles.section}>
-                    <h4 className={styles.sectionTitle}>Ask with AI</h4>
-                    <p className={styles.small}>
-                      Answers use only retrieved excerpts from this PDF, with
-                      citations where possible. When the document includes code,
-                      the reply may show it in formatted blocks you can copy.
-                    </p>
-                    <label
-                      className={styles.inputLabel}
-                      htmlFor="rag-ask-question"
-                    >
-                      Question
-                    </label>
-                    <div className={styles.queryBox}>
-                      <div className={styles.queryField}>
-                        <textarea
-                          id="rag-ask-question"
-                          className={styles.queryInput}
-                          placeholder="Ask a clear question in plain language. If the document does not cover it, the model should say so."
-                          value={askQuery}
-                          onChange={(e) => setAskQuery(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className={styles.queryBtn}
-                          onClick={handleAskQuery}
-                          disabled={!selected || askLoading || !askQuery.trim()}
-                        >
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden
-                          >
-                            <path
-                              d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          {askLoading ? "Asking..." : "Ask"}
-                        </button>
-                      </div>
-                    </div>
-                    {askError && (
-                      <div className={styles.errorMsg}>{askError}</div>
-                    )}
-                    {askAnswer && (
-                      <div className={styles.answerBox}>
-                        <RagAnswerBody>{askAnswer}</RagAnswerBody>
-                      </div>
-                    )}
-                  </section>
-                </div>
-              </div>
-            </div>
             // key={document_id} forces a fresh DocumentWorkspace on doc switch,
 
             // which is the React-recommended way to "reset state on prop change".
