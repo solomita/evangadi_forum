@@ -2,6 +2,8 @@
 node_modules/
 package-lock.json
 plans/
+docs/
+CHANGELOG.md
 backend/email-preview.html
 backend/test-confirmation-email.html
 node_modules/
