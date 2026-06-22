@@ -12,7 +12,7 @@ export const createDocumentFromUploadService= async (file, userId)=>{
 
     try 
     {
-        if (userId=== null){
+        if (userId== null){
             throw new Error ("Authenticated user ID is missing.");
         }
 

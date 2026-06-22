@@ -9,8 +9,14 @@ const EMBEDDING_MODEL =process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-0
 const ai = new GoogleGenAI({apiKey:GEMINI_API_KEY})
 
 
-export const getDocumentEmbedding = async (text)=>{
-
+export const getDocumentEmbedding = async (text) => {
+  if (!GEMINI_API_KEY || typeof GEMINI_API_KEY !== "string") {
+    const err = new Error(
+      "AI features are temporarily unavailable because the Gemini API is not configured.",
+    );
+    err.statusCode = 503; // 503 Service Unavailable
+    throw err;
+  }
   const result = await ai.models.embedContent({
     model: EMBEDDING_MODEL,
     contents: text,
@@ -23,3 +29,4 @@ export const getDocumentEmbedding = async (text)=>{
   }
   return values;
 }
+
