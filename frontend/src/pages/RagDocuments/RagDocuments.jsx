@@ -544,10 +544,16 @@ export default function RagDocuments() {
                       citations where possible. When the document includes code,
                       the reply may show it in formatted blocks you can copy.
                     </p>
-                    <label className={styles.inputLabel}>Question</label>
+                    <label
+                      className={styles.inputLabel}
+                      htmlFor="rag-ask-question"
+                    >
+                      Question
+                    </label>
                     <div className={styles.queryBox}>
                       <div className={styles.queryField}>
                         <textarea
+                          id="rag-ask-question"
                           className={styles.queryInput}
                           placeholder="Ask a clear question in plain language. If the document does not cover it, the model should say so."
                           value={askQuery}
