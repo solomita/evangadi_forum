@@ -460,9 +460,15 @@ export default function RagDocuments() {
                       Finds passages by meaning (embeddings), not only exact
                       keywords.
                     </p>
-                    <label className={styles.inputLabel}>Search query</label>
+                    <label
+                      className={styles.inputLabel}
+                      htmlFor="rag-search-query"
+                    >
+                      Search query
+                    </label>
                     <div className={styles.searchRow}>
                       <input
+                        id="rag-search-query"
                         className={styles.searchInput}
                         placeholder="Describe the topic or phrase you are looking for"
                         value={searchQuery}
