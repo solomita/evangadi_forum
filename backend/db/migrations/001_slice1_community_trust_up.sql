@@ -9,12 +9,15 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- -------------------------------------------------------------------------
--- users: add trust_score column
--- Stores the contributor's public recognition score (never decrements).
+-- users: add trust_score and role columns
 -- -------------------------------------------------------------------------
 ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `trust_score` INT NOT NULL DEFAULT 0
   AFTER `password_hash`;
+
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `role` ENUM('user', 'admin') NOT NULL DEFAULT 'user'
+  AFTER `trust_score`;
 
 -- -------------------------------------------------------------------------
 -- answer_votes

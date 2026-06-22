@@ -7,6 +7,7 @@ import ragRoutes from "./rag/routes/rag.routes.js";
 import ragFileRoutes from "./rag/routes/rag-file.routes.js";
 import leaderboardRoutes from "./leaderboard/routes/leaderboard.routes.js";
 import userRoutes from "./users/routes/user.routes.js";
+import adminRoutes from "./admin/routes/admin.routes.js";
 
 export const mainRouter = express.Router();
 
@@ -29,3 +30,5 @@ mainRouter.use("/rag/documents", ragFileRoutes);
 mainRouter.use("/leaderboard", leaderboardRoutes);
 // User profile routes
 mainRouter.use("/users", userRoutes);
+// Admin routes
+mainRouter.use("/admin", adminRoutes);
