@@ -15,7 +15,9 @@ function handleQuestionError(error) {
 
   const status = error.response.status;
   const backendMessage =
-    error.response.data?.msg || error.response.data?.message;
+    error.response.data?.error?.message ||
+    error.response.data?.msg ||
+    error.response.data?.message;
 
   switch (status) {
     case 400:
