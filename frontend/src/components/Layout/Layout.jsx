@@ -20,6 +20,9 @@ export default function Layout() {
     if (path === '/questions/ask') return 'Ask a question';
     if (path.startsWith('/questions/')) return 'Discussion';
     if (path === '/rag-documents') return 'Knowledge base';
+    if (path === '/leaderboard') return 'Leaderboard';
+    if (path.startsWith('/users/') && path.endsWith('/profile')) return 'Profile';
+    if (path === '/admin/queue') return 'Moderation Queue';
     return 'Forum';
   };
 
@@ -36,6 +39,12 @@ export default function Layout() {
       return 'Read the thread, review related topics, and reply with markdown if you can help.';
     if (path === '/rag-documents')
       return 'Private PDF library: reader, semantic search, and AI answers with citations per document.';
+    if (path === '/leaderboard')
+      return 'Top contributors ranked by votes received this month and all time.';
+    if (path.startsWith('/users/') && path.endsWith('/profile'))
+      return 'Trust score, badges, and contribution stats for this member.';
+    if (path === '/admin/queue')
+      return 'Review AI-flagged posts and take action: approve, remove, or escalate.';
     return '';
   };
 

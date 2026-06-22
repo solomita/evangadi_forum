@@ -315,7 +315,7 @@ export const getQuestionsService = async (filters = {}) => {
 
   return safeExecute(listSql, params);
 };
-export const getSingleQuestionService = async ({ questionHash }) => {
+export const getSingleQuestionService = async ({ questionHash, viewerId = null }) => {
   const normalizedAnswerLimit = 100;
 
   const questionSql = `
@@ -364,21 +364,27 @@ export const getSingleQuestionService = async ({ questionHash }) => {
       a.updated_at AS updatedAt,
       au.user_id AS userId,
       au.first_name AS userFirstName,
-      au.last_name AS userLastName
+      au.last_name AS userLastName,
+      COUNT(DISTINCT av.user_id) AS voteCount,
+      MAX(CASE WHEN av.user_id = ? THEN 1 ELSE 0 END) AS userHasVoted
     FROM answers a
-    JOIN users au
-      ON au.user_id = a.user_id
+    JOIN users au ON au.user_id = a.user_id
+    LEFT JOIN answer_votes av ON av.answer_id = a.answer_id
     WHERE a.question_id = ?
+    GROUP BY a.answer_id, a.content, a.created_at, a.updated_at,
+             au.user_id, au.first_name, au.last_name
     ORDER BY a.created_at DESC
     LIMIT ${normalizedAnswerLimit}
   `;
 
-  const answerRows = await safeExecute(answersSql, [question.id]);
+  const answerRows = await safeExecute(answersSql, [viewerId, question.id]);
   const answers = answerRows.map((row) => ({
     id: row.id,
     content: row.content,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    voteCount: Number(row.voteCount),
+    userHasVoted: Boolean(Number(row.userHasVoted)),
     user: {
       id: row.userId,
       firstName: row.userFirstName,

@@ -32,7 +32,7 @@ export const getSingleQuestionController = async (req, res, next) => {
   try {
     const { questionHash } = req.params;
 
-    const result = await getSingleQuestionService({ questionHash });
+    const result = await getSingleQuestionService({ questionHash, viewerId: req.user?.id ?? null });
 
     res.status(StatusCodes.OK).json({
       success: true,

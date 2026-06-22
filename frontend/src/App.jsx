@@ -14,6 +14,9 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import Landing from "./pages/Landing/Landing";
 import PostQuestion from "./pages/PostQuestion/PostQuestion";
 import QuestionDetail from "./pages/QuestionDetail/QuestionDetail";
+import Leaderboard from "./pages/Leaderboard/Leaderboard";
+import UserProfile from "./pages/UserProfile/UserProfile";
+import AdminQueue from "./pages/AdminQueue/AdminQueue";
 
 const RagDocuments = React.lazy(
   () => import("./pages/RagDocuments/RagDocuments"),
@@ -69,6 +72,30 @@ function App() {
                   <React.Suspense fallback={<div>Loading...</div>}>
                     <RagDocuments />
                   </React.Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leaderboard"
+              element={
+                <ProtectedRoute>
+                  <Leaderboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users/:userId/profile"
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/queue"
+              element={
+                <ProtectedRoute>
+                  <AdminQueue />
                 </ProtectedRoute>
               }
             />

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import MarkdownToolbar from "../../components/common/MarkdownToolbars/MarkdownToolbars.jsx";
-import { MessageSquare, ArrowLeft, Share2 } from "lucide-react";
+import { MessageSquare, ArrowLeft, Share2, ThumbsUp } from "lucide-react";
 import { questionService } from "../../services/question/question.service.js";
+import { answerService } from "../../services/answer/answer.service.js";
 import styles from "./QuestionDetail.module.css";
 import ui from "../../styles/pageStates.module.css";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -33,6 +34,7 @@ export default function QuestionDetail() {
   const textareaRef = useRef(null);
   const [isPosting, setIsPosting] = useState(false);
   const [isCheckingFit, setIsCheckingFit] = useState(false);
+  const [votingAnswerId, setVotingAnswerId] = useState(null);
   const [error, setError] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [toastMessage, setToastMessage] = useState(''); // Toast state
@@ -109,6 +111,29 @@ const triggerToast = msg => {
       setSubmitError(err.message || "Failed to check answer fit.");
     } finally {
       setIsCheckingFit(false);
+    }
+  };
+
+  const handleVote = async (answer) => {
+    if (votingAnswerId === answer.id) return;
+    setVotingAnswerId(answer.id);
+    try {
+      const result = answer.userHasVoted
+        ? await answerService.removeVote(answer.id)
+        : await answerService.addVote(answer.id);
+
+      setQuestion(prev => ({
+        ...prev,
+        answers: prev.answers.map(a =>
+          a.id === answer.id
+            ? { ...a, voteCount: result.voteCount, userHasVoted: !answer.userHasVoted }
+            : a
+        ),
+      }));
+    } catch (err) {
+      setSubmitError(err.message || 'Could not register vote.');
+    } finally {
+      setVotingAnswerId(null);
     }
   };
 
@@ -283,6 +308,18 @@ const triggerToast = msg => {
                   </div>
                   <div className={styles.answerBody}>
                     <ReactMarkdown components={markdownComponents}>{answer.content}</ReactMarkdown>
+                  </div>
+                  <div className={styles.answerFooter}>
+                    <button
+                      type="button"
+                      className={`${styles.voteButton} ${answer.userHasVoted ? styles['voteButton--active'] : ''}`}
+                      onClick={() => handleVote(answer)}
+                      disabled={votingAnswerId === answer.id || Number(answer.user?.id) === Number(user?.id)}
+                      title={Number(answer.user?.id) === Number(user?.id) ? 'You cannot vote on your own answer' : answer.userHasVoted ? 'Remove upvote' : 'Upvote this answer'}
+                    >
+                      <ThumbsUp size={14} />
+                      <span>{answer.voteCount ?? 0}</span>
+                    </button>
                   </div>
                 </article>
               ))}
