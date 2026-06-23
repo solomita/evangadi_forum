@@ -102,9 +102,13 @@ function DocumentWorkspace({ documentId, title, byteSize }) {
       } catch (err) {
         if (!cancelled) {
           setPreviewError(
-            err.response?.data?.message || err.message || "Failed to load PDF",
+            err.response?.data?.message ||
+              err.response?.data?.msg ||
+              err.message ||
+              "Failed to load PDF",
           );
         }
+      }
       } finally {
         if (!cancelled) {
           setPreviewLoading(false);
