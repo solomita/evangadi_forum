@@ -318,7 +318,7 @@ export default function QuestionDetail() {
               {fitResult ? (
                 <div className={`${styles.fitPanel} ${styles[`fitPanel--${fitResult.level}`]}`}>
                   <p className={styles.fitHeading}>
-                    {fitResult.level.toUpperCase()} FIT
+                    {fitResult.level} FIT
                   </p>
                   <p className={styles.fitNote}>{fitResult.note}</p>
                 </div>
