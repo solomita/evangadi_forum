@@ -9,9 +9,11 @@ export const ragService = {
     const form = new FormData();
     form.append("file", file);
     const res = await apiClient.post("/api/rag/documents", form, {
-      headers: { "Content-Type": "multipart/form-data" },
       onUploadProgress: (e) => {
-        if (onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+        if (!onProgress) return;
+        const total = e.total || 0;
+        if (!total) return;
+        onProgress(Math.round((e.loaded / total) * 100));
       },
     });
     return res.data.document;
