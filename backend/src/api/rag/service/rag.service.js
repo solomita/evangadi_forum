@@ -40,8 +40,10 @@ export const createDocumentFromUploadService= async (file, userId)=>{
         } 
 
         const text = await extractTextFromPDF(fileBuffer);
-        if (!text|| text.trim().length===0){
-            throw new Error ("No readable text found in PDF document.");
+        if (!text || text.trim().length === 0) {
+            const err = new Error("No readable text found in PDF document.");
+            err.statusCode = 400;
+            throw err;
         }
 
 
