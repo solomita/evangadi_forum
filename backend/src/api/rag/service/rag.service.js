@@ -76,12 +76,12 @@ export const createDocumentFromUploadService= async (file, userId)=>{
                 VALUES(?,?,?)`,
                 [documentId, i, chunk], );
 
-            const ChunkId = chunkResult.insertId;
+            const chunkId = chunkResult.insertId;
             
             // Store Vector : save vector embeddings to database
             await safeExecute(
                 `INSERT INTO document_chunk_vectors (chunk_id, source_text, embedding) VALUES (?, ?, ?)`,
-                [ChunkId, chunk, embeddingJson]
+                [chunkId, chunk, embeddingJson]
             );
         }
 
