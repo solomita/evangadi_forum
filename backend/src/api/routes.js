@@ -4,6 +4,8 @@ import answerRoutes from "./answer/routes/answer.routes.js";
 import questionRoutes from "./question/routes/question.routes.js";
 import answerFitRoutes from "./questions/routes/answer-fit.routes.js";
 import ragRoutes from "./rag/routes/rag.routes.js";
+import ragRoute from "./rag/routes/rag.routes.js";
+
 export const mainRouter = express.Router();
 
 // Authentication routes
@@ -12,7 +14,12 @@ mainRouter.use("/auth", authRoutes);
 mainRouter.use("/answers", answerRoutes);
 //  /api/questions
 mainRouter.use("/questions", questionRoutes);
+
 mainRouter.use("/questions", answerFitRoutes);
 
 // rag routes
 mainRouter.use("/rag", ragRoutes);
+mainRouter.use("/rag", ragRoutes);
+// RAG routes
+
+mainRouter.use("/rag", ragRoute);
