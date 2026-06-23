@@ -148,8 +148,12 @@ function DocumentWorkspace({ documentId, title, byteSize }) {
 
       setAskAnswer(result.answer || "");
     } catch (err) {
-      setAskError(err.response?.data?.message || "Could not get an answer.");
-    } finally {
+      setAskError(
+        err.response?.data?.message ||
+          err.response?.data?.msg ||
+          "Could not get an answer.",
+      );
+    }
       setAskLoading(false);
     }
   };
