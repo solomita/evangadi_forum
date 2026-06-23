@@ -25,25 +25,6 @@ export const parseEmbedding = (rawEmbedding) => {
   return null;
 };
 
-// const dotProduct = (a, b) => {
-//   let sum = 0;
-//   const limit = Math.min(a.length, b.length);
-//   for (let i = 0; i < limit; i += 1) {
-//     sum += a[i] * b[i];
-//   }
-//   return sum;
-// };
-
-// const magnitude = (arr) =>
-//   Math.sqrt(arr.reduce((sum, value) => sum + value * value, 0));
-
-// export const cosineSimilarity = (a, b) => {
-//   const magA = magnitude(a);
-//   const magB = magnitude(b);
-//   if (magA === 0 || magB === 0) return 0;
-//   return dotProduct(a, b) / (magA * magB);
-// };
-
 const dotProduct = (a, b) => {
   if (a.length !== b.length) return 0;
   let sum = 0;

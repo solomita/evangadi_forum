@@ -70,6 +70,8 @@ export const searchInDocumentService = async ({
       results: [],
     };
   }
+  // Step 4 - Compute cosine similarity and keep only top-k (O(n log k))
+  const heap = [];
 
   const heapPush = (item) => {
     heap.push(item);
@@ -119,6 +121,13 @@ export const searchInDocumentService = async ({
 
   // Step 5 - Extract top-k in descending order
   const top = heap.sort((a, b) => b.score - a.score);
+
+  if (top.length === 0) {
+    return {
+      query: normalizedQuery,
+      results: [],
+    };
+  }
 
   // Step 6 - Hydrate with actual text content
   const chunkIds = top.map((item) => item.chunkId);
