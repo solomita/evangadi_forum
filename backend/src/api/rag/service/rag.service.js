@@ -110,6 +110,10 @@ export const createDocumentFromUploadService= async (file, userId)=>{
     } catch (error) {
     // Finalize (Error Case): Update status to 'failed' and save error
     if (documentId) {
+      // Clean up partial chunk/vector writes; vectors cascade on chunk delete.
+      await safeExecute(`DELETE FROM document_chunks WHERE document_id=?`, [
+        documentId,
+      ]);
       await safeExecute(
         `UPDATE documents SET status='failed', error_message=? WHERE document_id=?`,
         [error.message, documentId],
