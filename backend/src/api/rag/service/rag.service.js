@@ -1,4 +1,4 @@
-import fs from "fs/promises";
+import fs from "fs/2026/promises"; // Or 'fs/promises' depending on your Node setup
 import { extractTextFromPDF } from "../../../utils/pdfParser.js";
 import { chunkText } from "../../../utils/chunk.js";
 import { safeExecute } from "../../../../db/config.js";
@@ -13,7 +13,7 @@ export const createDocumentFromUploadService = async (file, userId) => {
   let documentId;
 
   try {
-    if (userId === null) {
+    if (!userId) {
       throw new BadRequestError("Authenticated user ID is missing.");
     }
 
@@ -22,19 +22,17 @@ export const createDocumentFromUploadService = async (file, userId) => {
     const mimeType = file.mimetype ?? null;
     const byteSize = file.size ?? null;
 
-    // 1 Initial DB Record: Insert document as 'processing'
-
+    // 1. Initial DB Record: Insert document as 'processing'
     const insertResult = await safeExecute(
       ` INSERT INTO documents 
             (user_id, title, mime_type, byte_size, storage_path, status)
             VALUES (?, ?, ?, ?, ?, 'processing')`,
-
       [userId, title, mimeType, byteSize, storagePath],
     );
 
     documentId = insertResult.insertId;
 
-    //  2 Parse PDF: Extract text from PDF buffer
+    // 2. Parse PDF: Extract text from PDF buffer
     let fileBuffer;
     try {
       fileBuffer = await fs.readFile(file.path);
@@ -47,41 +45,57 @@ export const createDocumentFromUploadService = async (file, userId) => {
       throw new BadRequestError("No readable text found in PDF document.");
     }
 
-    // 3 Chunking: Split text into overlapping segments
+    // 3. Chunking: Split text into overlapping segments
     const chunks = chunkText(text);
     if (chunks.length === 0) {
       throw new BadRequestError("No text found in PDF");
     }
 
-    // 4. Embedding: Loop through chunks properly
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
+    // 4. Embedding: Process in concurrent batches (Copilot fix)
+    const BATCH_SIZE = 5;
 
-      // Call Gemini API to get vector embedding for the chunk
-      const embedding = await getDocumentEmbedding(chunk);
-      if (embedding === undefined || embedding === null) {
-        throw new Error("Failed to generate embedding for PDF chunk.");
-      }
-
-      const embeddingJson = JSON.stringify(embedding);
-      if (embeddingJson === undefined) {
-        throw new Error("Embedding could not be serialized for storage.");
-      }
-      // Store Vector : save chunk to database
-      const chunkResult = await safeExecute(
-        `INSERT INTO document_chunks
-                (document_id, chunk_index, content)
-                VALUES(?,?,?)`,
-        [documentId, i, chunk],
+    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+      const batch = chunks.slice(i, i + BATCH_SIZE);
+      const batchIndices = Array.from(
+        { length: batch.length },
+        (_, idx) => i + idx,
       );
 
-      const ChunkId = chunkResult.insertId;
+      // Fire off batch requests concurrently
+      const batchPromises = batch.map(async (chunk, localIdx) => {
+        const globalIndex = batchIndices[localIdx];
 
-      // Store Vector : save vector embeddings to database
-      await safeExecute(
-        `INSERT INTO document_chunk_vectors (chunk_id, source_text, embedding) VALUES (?, ?, ?)`,
-        [ChunkId, chunk, embeddingJson],
-      );
+        // Call Gemini API to get vector embedding for the chunk
+        const embedding = await getDocumentEmbedding(chunk);
+        if (embedding === undefined || embedding === null) {
+          throw new Error("Failed to generate embedding for PDF chunk.");
+        }
+
+        const embeddingJson = JSON.stringify(embedding);
+        if (embeddingJson === undefined) {
+          throw new Error("Embedding could not be serialized for storage.");
+        }
+
+        return { chunk, globalIndex, embeddingJson };
+      });
+
+      // Wait for the entire batch of API requests to finish
+      const batchResults = await Promise.all(batchPromises);
+
+      // Sequential DB insertion for the resolved batch to maintain consistency
+      for (const result of batchResults) {
+        const chunkResult = await safeExecute(
+          `INSERT INTO document_chunks (document_id, chunk_index, content) VALUES (?, ?, ?)`,
+          [documentId, result.globalIndex, result.chunk],
+        );
+
+        const chunkId = chunkResult.insertId;
+
+        await safeExecute(
+          `INSERT INTO document_chunk_vectors (chunk_id, source_text, embedding) VALUES (?, ?, ?)`,
+          [chunkId, result.chunk, result.embeddingJson],
+        );
+      }
     }
 
     // 5. Finalize: Update document status to ready

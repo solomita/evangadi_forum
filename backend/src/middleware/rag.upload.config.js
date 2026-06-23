@@ -1,14 +1,21 @@
+import fs from "fs";
 import multer from "multer";
 import { BadRequestError } from "../utils/errors/index.js";
 
 const storage = multer.diskStorage({
   // Step 1: Tell the multer where to save the incoming PDF
-  // Passing a string instead of a function allows Multer to create the folder if it doesn't exist.
-  destination: "uploads/",
+ destination:(req, file, cb) => {
+  try{
+    fs.mkdirSync("uploads", { recursive: true });
+    cb(null, "uploads");
+  } catch (err) {
+    cb(err);
+  }
+ },
   filename: (req, file, cb) => {
     // Step 2 : Ensure unique filenames to prevent overwriting
     const safeOriginalName = (file.originalName || "upload.pdf").replace(/[^a-zA-Z0-9.-]/g, "_");
-    const uniqueName = Date.now() + "-" + safeOriginalName;
+    const uniqueName = `${Date.now()}-${safeOriginalName}`;
     
     cb(null, uniqueName);
   },
@@ -17,7 +24,7 @@ const uploadPdf = multer({
   storage: storage,
   limits: {
     // Limits file size to 10MB 
-    filesize: 10 * 1024 * 1024,
+    fileSize: 10 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
     // step 3: Check that the file is an actual PDF
