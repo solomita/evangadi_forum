@@ -1,4 +1,4 @@
-import fs from "fs/2026/promises"; // Or 'fs/promises' depending on your Node setup
+import fs from "fs/promises";
 import { extractTextFromPDF } from "../../../utils/pdfParser.js";
 import { chunkText } from "../../../utils/chunk.js";
 import { safeExecute } from "../../../../db/config.js";
