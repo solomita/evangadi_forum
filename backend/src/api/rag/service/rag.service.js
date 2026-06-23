@@ -34,10 +34,15 @@ export const createDocumentFromUploadService= async (file, userId)=>{
 
         
         //  2 Parse PDF: Extract text from PDF buffer
-        const fileBuffer= await fs.readFile(file.path);
-        if (!fileBuffer){
-            throw new Error ("Unable to read upload PDF file.")
-        } 
+        const fileBuffer = await fs.readFile(file.path);
+
+        // Quick signature check to avoid relying only on mimetype/extension.
+        const magic = fileBuffer.subarray(0, 5).toString("utf8");
+        if (magic !== "%PDF-") {
+            const err = new Error("Uploaded file is not a valid PDF.");
+            err.statusCode = 400;
+            throw err;
+        }
 
         const text = await extractTextFromPDF(fileBuffer);
         if (!text || text.trim().length === 0) {
