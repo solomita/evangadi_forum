@@ -159,6 +159,17 @@
   background-color: var(--primary-light);
 }
 
+.navbar__badge {
+  position: absolute;
+  top: 0.32rem;
+  right: 0.32rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--primary);
+  border: 2px solid var(--surface);
+}
+
 .navbar__user {
   display: flex;
   align-items: center;

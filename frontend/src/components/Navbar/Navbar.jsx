@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, LogOut, Sparkles } from 'lucide-react';
+import { Search, LogOut, Sparkles, Bell } from 'lucide-react';
 import styles from './Navbar.module.css';
 
 /**
  * Top bar: page title, debounced text search → `/dashboard?q=…`, optional AI semantic search.
  * Search state is driven by the URL on the dashboard so bookmarks and refresh keep context.
  */
-export default function Navbar({ title, subtitle, user, onLogout, showSearch = false }) {
+export default function Navbar({
+  title,
+  subtitle,
+  user,
+  onLogout,
+  showSearch = false,
+  hasUnseenReleases = false,
+  onBellClick,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
@@ -108,6 +116,18 @@ export default function Navbar({ title, subtitle, user, onLogout, showSearch = f
       </form>}
 
       <div className={styles.navbar__actions}>
+        {user && onBellClick && (
+          <button
+            type='button'
+            className={styles.navbar__notification}
+            onClick={onBellClick}
+            aria-label="What's new"
+            title="What's new"
+          >
+            <Bell size={20} />
+            {hasUnseenReleases && <span className={styles.navbar__badge} />}
+          </button>
+        )}
         <div className={styles.navbar__user}>
           <span className={styles['navbar__user-name']}>
             {user ? `${user.firstName} ${user.lastName}` : 'Guest'}

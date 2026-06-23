@@ -1,7 +1,10 @@
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { releasesService } from '../../services/releases/releases.service.js';
 import Navbar from '../Navbar/Navbar.jsx';
 import Sidebar from '../Sidebar/Sidebar.jsx';
+import WhatsNewModal from '../WhatsNewModal/WhatsNewModal.jsx';
 import styles from './Layout.module.css';
 
 /**
@@ -11,6 +14,49 @@ import styles from './Layout.module.css';
 export default function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  /* ── Changelog / "What's New" state ── */
+  const [releases, setReleases] = useState([]);      // releases shown in the modal
+  const [showModal, setShowModal] = useState(false);
+  const [hasUnseen, setHasUnseen] = useState(false); // drives the navbar bell badge
+  const checkedRef = useRef(false);                  // run the unseen check once per session
+
+  // On login, check for unseen releases and auto-open the modal if any exist.
+  useEffect(() => {
+    if (!user || checkedRef.current) return;
+    checkedRef.current = true;
+
+    releasesService
+      .getUnseen()
+      .then(({ data, count }) => {
+        if (count > 0) {
+          setReleases(data);
+          setHasUnseen(true);
+          setShowModal(true);
+        }
+      })
+      .catch(() => {/* non-fatal: changelog is best-effort */});
+  }, [user]);
+
+  // Dismissing the auto-shown modal marks everything seen and clears the badge.
+  const handleCloseModal = () => {
+    setShowModal(false);
+    if (hasUnseen) {
+      setHasUnseen(false);
+      releasesService.markSeen().catch(() => {});
+    }
+  };
+
+  // Bell click: reopen showing recent releases (even if already seen).
+  const handleBellClick = async () => {
+    if (releases.length === 0) {
+      try {
+        const recent = await releasesService.getRecent();
+        setReleases(recent);
+      } catch {/* keep whatever we have */}
+    }
+    setShowModal(true);
+  };
 
   /** Navbar title: keep in sync with routes in `App.jsx`. */
   const getTitle = () => {
@@ -58,6 +104,8 @@ export default function Layout() {
           user={user}
           onLogout={logout}
           showSearch={location.pathname === '/dashboard'}
+          hasUnseenReleases={hasUnseen}
+          onBellClick={handleBellClick}
         />
         <main className={styles.layout__main}>
           <div className={styles.layout__mainInner}>
@@ -94,6 +142,10 @@ export default function Layout() {
           </div>
         </footer>
       </div>
+
+      {showModal && (
+        <WhatsNewModal releases={releases} onClose={handleCloseModal} />
+      )}
     </div>
   );
 }
