@@ -44,6 +44,7 @@ const AskQuestion = () => {
     const questionData = {
       title: title.trim(),
       body: body.trim(),
+      content: body.trim(),
       tags: tags,
     };
 

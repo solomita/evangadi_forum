@@ -22,8 +22,12 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) =>
-    cb(null, `${Date.now()}-${file.originalname}`),
+  filename: (_req, file, cb) => {
+    const safeOriginalName = path
+      .basename(file.originalname)
+      .replace(/[^a-zA-Z0-9._-]/g, "_");
+    cb(null, `${Date.now()}-${safeOriginalName}`);
+  },
 });
 
 const upload = multer({
@@ -31,15 +35,15 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB cap
   fileFilter: (_req, file, cb) => {
     if (file.mimetype === "application/pdf") {
-      cb(null, true);
-    } else {
-      cb(new Error("Only PDF files are allowed"));
+      return cb(null, true);
     }
+    const err = new Error("Only PDF files are allowed");
+    err.statusCode = 400;
+    cb(err);
   },
 });
 
 router.use(authenticateUser);
-
 router.get("/documents", listDocuments);
 router.post("/documents", upload.single("file"), uploadDocument);
 router.delete("/documents/:id", deleteDocument);

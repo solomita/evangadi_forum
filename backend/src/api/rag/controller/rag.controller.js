@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs/promises";
 import { StatusCodes } from "http-status-codes";
 import {
   listDocumentsForUser,
@@ -21,7 +22,7 @@ export const uploadDocument = async (req, res, next) => {
     if (!req.file) {
       return res
         .status(StatusCodes.BAD_REQUEST)
-        .json({ message: "A PDF file is required" });
+        .json({ msg: "A PDF file is required" });
     }
     const saved = await addDocument({
       user_id: req.user.id,
@@ -30,7 +31,9 @@ export const uploadDocument = async (req, res, next) => {
       size: req.file.size,
       filePath: req.file.path,
     });
-    res.status(StatusCodes.CREATED).json({ document: saved });
+    // Never expose the server's absolute disk path to the client.
+    const { storage_path, ...safeDocument } = saved;
+    res.status(StatusCodes.CREATED).json({ document: safeDocument });
   } catch (err) {
     next(err);
   }
@@ -39,25 +42,29 @@ export const uploadDocument = async (req, res, next) => {
 export const deleteDocument = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-
     // Ownership check: ensure the doc belongs to the authenticated user
     const doc = await getDocumentById(id);
     if (!doc) {
       return res
         .status(StatusCodes.NOT_FOUND)
-        .json({ message: "Document not found" });
+        .json({ msg: "Document not found" });
     }
     if (doc.user_id !== req.user.id) {
       return res
         .status(StatusCodes.FORBIDDEN)
-        .json({ message: "Access denied" });
+        .json({ msg: "Access denied" });
     }
-
     const ok = await deleteDocumentById(id);
     if (!ok) {
       return res
         .status(StatusCodes.NOT_FOUND)
-        .json({ message: "Document not found" });
+        .json({ msg: "Document not found" });
+    }
+    try {
+      await fs.unlink(doc.storage_path);
+    } catch (err) {
+      // Non-fatal: the DB row is already deleted.
+      console.warn("Failed to delete document file:", err.message);
     }
     res.status(StatusCodes.NO_CONTENT).send();
   } catch (err) {
@@ -89,7 +96,6 @@ export const getDocumentFile = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const doc = await getDocumentById(id);
-
     if (!doc) {
       return res
         .status(StatusCodes.NOT_FOUND)
@@ -100,7 +106,6 @@ export const getDocumentFile = async (req, res, next) => {
         .status(StatusCodes.FORBIDDEN)
         .json({ msg: "Access denied" });
     }
-
     // storage_path is the absolute disk path saved by multer
     const filePath = path.resolve(doc.storage_path);
     res.sendFile(filePath);

@@ -59,7 +59,7 @@ export async function addDocument({
   }, 1000);
 
   const [doc] = await safeExecute(
-    `SELECT document_id, user_id, title, mime_type, storage_path,
+    `SELECT document_id, user_id, title, mime_type,
             byte_size, status, error_message, created_at
      FROM documents WHERE document_id = ?`,
     [id],
