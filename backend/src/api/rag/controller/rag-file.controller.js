@@ -8,14 +8,6 @@ export const getDocumentFileController = async (req, res, next) => {
 
     const document = await getDocumentFileService({ documentId, userId });
 
-    res.setHeader("Content-Type", document.mimeType || "application/pdf");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-
-    const safeFilename =
-      (String(document.title || "document").replace(/[\r\n"]/g, "").trim() ||
-        "document") + ".pdf";
-    res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
-
     const fileStream = fs.createReadStream(document.storagePath);
 
     res.on("close", () => fileStream.destroy());
@@ -25,7 +17,18 @@ export const getDocumentFileController = async (req, res, next) => {
       res.destroy(error);
     });
 
-    fileStream.pipe(res);
+    fileStream.on("open", () => {
+      const safeFilename =
+        (String(document.title || "document").replace(/[\r\n"]/g, "").trim() ||
+          "document") + ".pdf";
+
+      res.setHeader("Content-Type", document.mimeType || "application/pdf");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
+
+      fileStream.pipe(res);
+    });
   } catch (error) {
     next(error);
   }
