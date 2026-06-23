@@ -16,4 +16,4 @@ mainRouter.use("/questions", questionRoutes);
 
 mainRouter.use("/questions", answerFitRoutes);
 
-mainRouter.use("/rag",ragRoute)
+mainRouter.use("/rag", ragRoute);
