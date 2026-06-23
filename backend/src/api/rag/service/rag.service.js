@@ -48,9 +48,11 @@ export const createDocumentFromUploadService= async (file, userId)=>{
 
 
         // 3 Chunking: Split text into overlapping segments 
-        const chunks = chunkText (text);
-        if (chunks.length===0){
-            throw new Error ("No text found in PDF");
+        const chunks = chunkText(text);
+        if (chunks.length === 0) {
+            const err = new Error("No text found in PDF");
+            err.statusCode = 400;
+            throw err;
         }
 
         // 4. Embedding: Loop through chunks properly
