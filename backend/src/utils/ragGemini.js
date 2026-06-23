@@ -2,12 +2,11 @@ import { GoogleGenAI } from "@google/genai";
  import { BadRequestError, ServiceUnavailableError } from "./errors/index.js";
 
 
-const GEMINI_API_KEY= process.env.GEMINI_API_KEY
-const EMBEDDING_MODEL =process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const EMBEDDING_MODEL =
+  process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 
-
-const ai = new GoogleGenAI({apiKey:GEMINI_API_KEY})
-
+const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 export const getDocumentEmbedding = async (text) => {
  
