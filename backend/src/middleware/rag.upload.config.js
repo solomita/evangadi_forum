@@ -44,18 +44,11 @@ export const handlePdfUpload = async (req, res, next) => {
 };
 
 export const createDocumentMulterErrorHandler = (err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "File too large. Maximum size is 10MB.",
-        });
-    }
-    return res.status(400).json({ success: false, error: err.message });
-  } else if (err) {
-    return res.status(400).json({ success: false, error: err.message });
+  if (!err) return next();
+
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    return next(new BadRequestError("File too large. Maximum size is 10MB."));
   }
-  next();
+
+  return next(err);
 };
