@@ -14,7 +14,7 @@ const storage = multer.diskStorage({
  },
   filename: (req, file, cb) => {
     // Step 2 : Ensure unique filenames to prevent overwriting
-    const safeOriginalName = (file.originalName || "upload.pdf").replace(/[^a-zA-Z0-9.-]/g, "_");
+    const safeOriginalName = (file.originalname || "upload.pdf").replace(/[^a-zA-Z0-9.-]/g, "_");
     const uniqueName = `${Date.now()}-${safeOriginalName}`;
     
     cb(null, uniqueName);
