@@ -313,7 +313,7 @@ export const getFlagHistoryService = async ({ page, limit, status }) => {
   const allowedStatuses = ['pending', 'approved', 'removed', 'all'];
   const filterStatus = allowedStatuses.includes(status) ? status : 'all';
 
-  const whereClause = filterStatus === 'all' ? '' : `WHERE mf.queue_status = '${filterStatus}'`;
+  const whereClause = filterStatus === 'all' ? '' : `WHERE queue_status = '${filterStatus}'`;
 
   const [rows, total] = await Promise.all([
     safeExecute(

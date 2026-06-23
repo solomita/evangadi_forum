@@ -38,6 +38,8 @@ export default function QuestionDetail() {
   const [error, setError] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [toastMessage, setToastMessage] = useState(''); // Toast state
+  const [answerUnderReview, setAnswerUnderReview] = useState(false);
+  const [answerRejection, setAnswerRejection] = useState(null); // { reason, guidance }
 
   const isOwnQuestion =
     question && user ? Number(question.userId) === Number(user.id) : false;
@@ -146,13 +148,19 @@ const triggerToast = msg => {
     }
 
     setSubmitError(null);
+    setAnswerRejection(null);
+    setAnswerUnderReview(false);
     setIsPosting(true);
 
     try {
-      const createdAnswer = await questionService.postAnswer(
-        question.id,
-        answerText.trim(),
-      );
+      const createdAnswer = await questionService.postAnswer(question.id, answerText.trim());
+
+      if (createdAnswer.flagged) {
+        setAnswerUnderReview(true);
+        setAnswerText('');
+        setFitResult(null);
+        return;
+      }
 
       setQuestion((prev) => ({
         ...prev,
@@ -162,7 +170,11 @@ const triggerToast = msg => {
       setAnswerText("");
       setFitResult(null);
     } catch (err) {
-      setSubmitError(err.message || "Failed to post answer. Please try again.");
+      if (err.code === 'CONTENT_MODERATION_REJECTED') {
+        setAnswerRejection({ reason: err.message, guidance: err.guidance });
+      } else {
+        setSubmitError(err.message || 'Failed to post answer. Please try again.');
+      }
     } finally {
       setIsPosting(false);
     }
@@ -174,7 +186,7 @@ const triggerToast = msg => {
       triggerToast("Link copied to clipboard!");
     } catch (err) {
       console.error("Failed to copy link: ", err);
-      
+
       try {
         const textArea = document.createElement("textarea");
         textArea.value = window.location.href;
@@ -183,7 +195,7 @@ const triggerToast = msg => {
         document.execCommand("copy");
         document.body.removeChild(textArea);
         triggerToast("Link copied to clipboard!");
-      } catch (fallbackErr) {
+      } catch {
         triggerToast("Could not copy link automatically.");
       }
     }
@@ -340,9 +352,22 @@ const triggerToast = msg => {
             </div>
           ) : (
             <>
-              {submitError ? (
-                <div className={styles.errorBanner}>{submitError}</div>
-              ) : null}
+              {submitError && <div className={styles.errorBanner}>{submitError}</div>}
+
+              {answerUnderReview && (
+                <div className={styles.reviewBanner}>
+                  <strong>Your answer is under review.</strong> It will appear here once approved by our moderation team.
+                </div>
+              )}
+
+              {answerRejection && (
+                <div className={styles.moderationBanner}>
+                  <strong>Answer not posted.</strong> {answerRejection.reason}
+                  {answerRejection.guidance && (
+                    <p className={styles.moderationGuidance}>{answerRejection.guidance}</p>
+                  )}
+                </div>
+              )}
 
               <div className={styles.editorShell}>
                 <MarkdownToolbar

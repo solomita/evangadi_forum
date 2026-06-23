@@ -25,8 +25,15 @@ export default function PostQuestion() {
   /* ── AI Coach state ── */
   const [coachFeedback, setCoachFeedback] = useState(null);
 
+  /* ── Moderation state ── */
+  const [moderationRejection, setModerationRejection] = useState(null); // { reason, guidance }
+  const [duplicateWarning, setDuplicateWarning] = useState(null);   // { hash, title } — same user
+  const [similarQuestion, setSimilarQuestion]   = useState(null);   // { hash, title } — forum-wide
+  const [aiContextResult, setAiContextResult] = useState(null);
+  const [isLoadingAiContext, setIsLoadingAiContext] = useState(false);
+
   /* ── Success state ── */
-  const [successData, setSuccessData] = useState(null); // { questionId, questionHash }
+  const [successData, setSuccessData] = useState(null); // { data, flagged?, moderation? }
   const textareaRef = useRef(null);
 
   /* ────────────────────────── Helpers ────────────────────────── */
@@ -57,10 +64,10 @@ export default function PostQuestion() {
       setValidationErrors((prev) => ({ ...prev, [name]: undefined }));
     }
 
-    // Add this line to clear out stale AI feedback when the user updates fields
-    if (coachFeedback) {
-      setCoachFeedback(null);
-    }
+    if (coachFeedback) setCoachFeedback(null);
+    if (moderationRejection) { setModerationRejection(null); setAiContextResult(null); }
+    if (duplicateWarning) setDuplicateWarning(null);
+    if (similarQuestion)  setSimilarQuestion(null);
   }
 
   async function handleGetCoachFeedback() {
@@ -81,6 +88,19 @@ export default function PostQuestion() {
       setError(err.message || "Failed to get AI feedback. Please try again.");
     } finally {
       setIsCoaching(false);
+    }
+  }
+
+  async function handleGetAiContext() {
+    setIsLoadingAiContext(true);
+    setAiContextResult(null);
+    try {
+      const answer = await questionService.generateAIContext(formData);
+      setAiContextResult(answer || "No result returned. Please try again.");
+    } catch {
+      setAiContextResult("AI search is temporarily unavailable. Please try again shortly.");
+    } finally {
+      setIsLoadingAiContext(false);
     }
   }
 
@@ -105,74 +125,107 @@ export default function PostQuestion() {
 
     try {
       const data = await questionService.createQuestion(formData);
-      setSuccessData(data);
+      if (!data?.flagged) {
+        // Navigate straight to the published question — no blocking success screen.
+        const hash = data?.data?.questionHash || data?.questionHash;
+        navigate(hash ? `/questions/${hash}` : '/dashboard');
+      } else {
+        setSuccessData(data);
+      }
     } catch (err) {
-      // Catch and display database or network errors
+      if (err.code === 'CONTENT_MODERATION_REJECTED') {
+        setModerationRejection({ reason: err.message, guidance: err.guidance });
+      } else if (err.code === 'DUPLICATE_QUESTION') {
+        setDuplicateWarning({ hash: err.existingQuestionHash, title: err.existingQuestionTitle });
+      } else if (err.code === 'SIMILAR_QUESTION_EXISTS') {
+        setSimilarQuestion({ hash: err.similarQuestionHash, title: err.similarQuestionTitle });
+      } else {
+        setError(err.message || "Failed to post question. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleForcePost() {
+    setSimilarQuestion(null);
+    setIsSubmitting(true);
+    try {
+      const data = await questionService.createQuestion(formData, { force: true });
+      if (!data?.flagged) {
+        const hash = data?.data?.questionHash || data?.questionHash;
+        navigate(hash ? `/questions/${hash}` : '/dashboard');
+      } else {
+        setSuccessData(data);
+      }
+    } catch (err) {
       setError(err.message || "Failed to post question. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  /* ────────────────────────── Success screen ─────────────────── */
+  /* ────────────────────────── Flagged post review screen ────────── */
+  // Only reached when successData.flagged === true.
+  // Non-flagged posts navigate directly to the question page.
   if (successData) {
-    const questionPayload =
-      successData?.data || successData?.question || successData;
-    const questionId = questionPayload?.id || successData?.question_id;
-    const questionHash =
-      questionPayload?.questionHash ||
-      successData?.questionHash ||
-      successData?.question_hash;
+    const modCategory = successData?.moderation?.category;
+    const modGuidance = successData?.moderation?.guidance;
+
+    const CATEGORY_LABELS = {
+      spam:        'Spam',
+      harassment:  'Harassment',
+      off_topic:   'Off-topic content',
+      low_quality: 'Low quality',
+    };
+
+    const handleEditAndResubmit = () => {
+      setSuccessData(null);
+      setCoachFeedback(null);
+      setError(null);
+      setModerationRejection(null);
+      setValidationErrors({});
+    };
+
     return (
       <div className={styles.page}>
         <div className={styles.pageHeader}>
           <span className={styles.pageLabel}>Ask the cohort</span>
           <h1 className={styles.pageTitle}>Publish to the forum</h1>
-          <p className={styles.pageSubtitle}>
-            Public threads help the whole cohort. Write as if a classmate will
-            debug your issue tomorrow. They only know what you put on the page.
-          </p>
         </div>
 
-        <div className={styles.successCard}>
-          <div className={styles.successIcon}>✓</div>
-          <h2 className={styles.successTitle}>Thread published</h2>
-          <p className={styles.successSubtitle}>
-            Your post is indexed for keyword search and embedding-based
-            similarity. Share the link in study groups, or stay on the thread to
-            answer follow-up questions from peers.
+        <div className={styles.reviewCard}>
+          <div className={styles.reviewIcon}>⚠</div>
+          <h2 className={styles.reviewTitle}>Your question is under review</h2>
+          <p className={styles.reviewSubtitle}>
+            Our moderation system flagged this post before it could be published.
+            It will not be visible to other users until a moderator approves it.
           </p>
-          <div className={styles.successActions}>
-            <button
-              id="back-to-dashboard-btn"
-              className={styles.successBackBtn}
-              onClick={() => navigate("/dashboard")}
-            >
-              Back to Dashboard
+
+          {modCategory && (
+            <div className={styles.reviewDetail}>
+              <span className={styles.reviewDetailLabel}>Flagged for</span>
+              <span className={styles.reviewDetailValue}>
+                {CATEGORY_LABELS[modCategory] || modCategory}
+              </span>
+            </div>
+          )}
+
+          {modGuidance && (
+            <p className={styles.reviewGuidance}>{modGuidance}</p>
+          )}
+
+          <p className={styles.reviewHint}>
+            You can edit your question to address the issue and resubmit, or
+            go back to the dashboard.
+          </p>
+
+          <div className={styles.reviewActions}>
+            <button className={styles.reviewEditBtn} onClick={handleEditAndResubmit}>
+              Edit and resubmit
             </button>
-            {(questionHash || questionId) && (
-              <button
-                id="view-question-btn"
-                className={styles.successViewBtn}
-                onClick={() =>
-                  navigate(`/questions/${questionHash || questionId}`)
-                }
-              >
-                View Question
-              </button>
-            )}
-            <button
-              id="ask-another-btn"
-              className={styles.successAskBtn}
-              onClick={() => {
-                setSuccessData(null);
-                setFormData({ title: "", content: "" });
-                setCoachFeedback(null);
-                setError(null);
-                setValidationErrors({});
-              }}
-            >
-              Ask Another
+            <button className={styles.successBackBtn} onClick={() => navigate("/dashboard")}>
+              Back to Dashboard
             </button>
           </div>
         </div>
@@ -249,14 +302,93 @@ export default function PostQuestion() {
         </div>
       </div>
 
-      {/* Global error banner */}
+      {/* General error banner */}
       {error && (
-        <div
-          id="post-question-error"
-          className={styles.errorBanner}
-          role="alert"
-        >
+        <div id="post-question-error" className={styles.errorBanner} role="alert">
           {error}
+        </div>
+      )}
+
+      {/* Moderation rejection banner — off-topic / out of scope */}
+      {moderationRejection && (
+        <div className={styles.moderationBanner} role="alert">
+          <strong>Your question was not published.</strong> {moderationRejection.reason}
+          {moderationRejection.guidance && (
+            <p className={styles.moderationGuidance}>{moderationRejection.guidance}</p>
+          )}
+          <div className={styles.moderationActions}>
+            <button
+              type="button"
+              className={styles.aiSearchBtn}
+              onClick={handleGetAiContext}
+              disabled={isLoadingAiContext}
+            >
+              {isLoadingAiContext ? (
+                <><span className={`${styles.spinner} ${styles.spinnerDark}`} /> Searching…</>
+              ) : (
+                <><span className={styles.aiCoachBtnIcon}>✦</span> Get AI answer on this topic</>
+              )}
+            </button>
+          </div>
+          {aiContextResult && (
+            <div className={styles.aiContextPanel}>
+              <div className={styles.aiContextHeader}>
+                <span className={styles.aiCoachBtnIcon}>✦</span> AI Answer
+              </div>
+              <p className={styles.aiContextText}>{aiContextResult}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Forum-wide similar question suggestion */}
+      {similarQuestion && (
+        <div className={styles.similarBanner} role="alert">
+          <strong>A very similar question already exists in the forum.</strong>
+          {similarQuestion.title && (
+            <p className={styles.similarTitle}>"{similarQuestion.title}"</p>
+          )}
+          <p className={styles.similarSubtext}>
+            Reading it may already answer your question. If your situation is different, you can still post.
+          </p>
+          <div className={styles.similarActions}>
+            {similarQuestion.hash && (
+              <button
+                type="button"
+                className={styles.similarViewBtn}
+                onClick={() => navigate(`/questions/${similarQuestion.hash}`)}
+              >
+                View existing question →
+              </button>
+            )}
+            <button
+              type="button"
+              className={styles.similarForceBtn}
+              onClick={handleForcePost}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Posting…' : 'Post anyway'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate question warning */}
+      {duplicateWarning && (
+        <div className={styles.duplicateBanner} role="alert">
+          <strong>You already have a very similar question posted.</strong>{' '}
+          Posting the same question again won't get faster answers.
+          {duplicateWarning.hash && (
+            <div className={styles.moderationActions}>
+              <button
+                type="button"
+                className={styles.duplicateViewBtn}
+                onClick={() => navigate(`/questions/${duplicateWarning.hash}`)}
+              >
+                View your existing question →
+              </button>
+            </div>
+          )}
         </div>
       )}
 

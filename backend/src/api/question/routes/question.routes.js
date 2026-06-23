@@ -11,6 +11,7 @@ import {
 import {
   createQuestionController,
   generateQuestionDraftCoachController,
+  generateAIContextController,
   getQuestionsController,
   searchQuestionsSemanticController,
   getSimilarQuestionsController,
@@ -24,6 +25,8 @@ questionRoute.get("/", authenticateUser, getQuestionsValidation, getQuestionsCon
 questionRoute.post("/", authenticateUser, createQuestionValidation, createQuestionController);
 
 questionRoute.post("/draft-coach", authenticateUser, draftCoachValidation, generateQuestionDraftCoachController);
+
+questionRoute.post("/ai-search", authenticateUser, generateAIContextController);
 
 questionRoute.get("/search", authenticateUser, searchQuestionsValidation, searchQuestionsSemanticController);
 

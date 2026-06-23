@@ -46,7 +46,14 @@ export const errorHandler = (err, req, res, next) => {
     message = "Duplicate value entered for a unique field";
   }
 
-  // `error` is the canonical envelope; `msg` is kept for backward compatibility
-  // with older clients that read `response.data.msg`.
-  return res.status(statusCode).json({ error: { code, message }, msg: message });
+  // Canonical envelope plus optional moderation / duplicate-detection metadata.
+  const body = { code, message };
+  if (err.guidance)              body.guidance = err.guidance;
+  if (err.existingQuestionHash)  body.existingQuestionHash  = err.existingQuestionHash;
+  if (err.existingQuestionTitle) body.existingQuestionTitle = err.existingQuestionTitle;
+  if (err.similarQuestionHash)   body.similarQuestionHash   = err.similarQuestionHash;
+  if (err.similarQuestionTitle)  body.similarQuestionTitle  = err.similarQuestionTitle;
+
+  // `error` is the canonical shape; `msg` kept for backward-compatible clients.
+  return res.status(statusCode).json({ error: body, msg: message });
 };

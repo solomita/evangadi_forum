@@ -90,6 +90,8 @@ const parseDraftCoachResponse = rawText => {
 /**
  * Generates draft coaching feedback for a forum question.
  */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 export const generateQuestionDraftCoachService = async ({ title, content }) => {
   if (!gemini) {
     throw new ServiceUnavailableError(
@@ -97,28 +99,34 @@ export const generateQuestionDraftCoachService = async ({ title, content }) => {
     );
   }
 
-  try {
-    const response = await gemini.models.generateContent({
-      model: GEMINI_TEXT_MODEL,
-      contents: buildDraftCoachPrompt({ title, content }),
-    });
+  const prompt = buildDraftCoachPrompt({ title, content });
+  let lastError;
 
-    return parseDraftCoachResponse(response?.text || '');
-  } catch (error) {
-    const errorMessage = String(error?.message || '').toLowerCase();
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const response = await gemini.models.generateContent({
+        model: GEMINI_TEXT_MODEL,
+        contents: prompt,
+      });
+      return parseDraftCoachResponse(response?.text || '');
+    } catch (error) {
+      lastError = error;
+      const msg = String(error?.message || '').toLowerCase();
 
-    if (
-      errorMessage.includes('api key') ||
-      errorMessage.includes('permission') ||
-      errorMessage.includes('unauthorized')
-    ) {
-      throw new ServiceUnavailableError(
-        'Draft coach service is not configured correctly. Check GEMINI_API_KEY in backend/.env.',
-      );
+      if (msg.includes('api key') || msg.includes('permission') || msg.includes('unauthorized')) {
+        throw new ServiceUnavailableError(
+          'Draft coach service is not configured correctly. Check GEMINI_API_KEY in backend/.env.',
+        );
+      }
+
+      const retryable = error.status === 503 || msg.includes('high demand');
+      if (attempt === 1 && retryable) {
+        await sleep(2500);
+        continue;
+      }
+      break;
     }
-
-    throw new ServiceUnavailableError(
-      'Draft coach service is temporarily unavailable.',
-    );
   }
+
+  throw new ServiceUnavailableError('Draft coach service is temporarily unavailable.');
 };
