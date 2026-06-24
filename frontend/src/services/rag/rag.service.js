@@ -3,7 +3,7 @@ import { apiClient } from "../core/api.client.js";
 export const ragService = {
   listDocuments: async () => {
     const res = await apiClient.get("/api/rag/documents");
-    return res.data.documents || [];
+    return res.data.datas || [];
   },
   uploadPdf: async (file, onProgress) => {
     const form = new FormData();
@@ -16,7 +16,7 @@ export const ragService = {
         onProgress(Math.round((e.loaded / total) * 100));
       },
     });
-    return res.data.document;
+    return res.data.data;
   },
   deleteDocument: async (id) => {
     await apiClient.delete(`/api/rag/documents/${id}`);
