@@ -479,26 +479,6 @@
   vertical-align: middle;
 }
 
-.queryBtn {
-  background: #f97316;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.queryBtn:hover:not(:disabled) {
-  background: #fb923c;
-}
-.queryBtn:disabled {
-  opacity: 0.6;
-  /* cursor: not-allowed; */
-}
-
 .resultItemAnimated {
   opacity: 0;
   transform: translateY(6px);

@@ -452,7 +452,8 @@ export default function RagDocuments() {
         console.error("Document polling failed:", err);
 
         setDocsError(
-          err.response?.data?.message ||
+          err.response?.data?.msg ||
+            err.response?.data?.message ||
             err.message ||
             "Failed to refresh documents.",
         );
@@ -492,7 +493,9 @@ export default function RagDocuments() {
       } catch (err) {
         if (!cancelled) {
           setDocsError(
-            err.response?.data?.message || "Could not load documents.",
+            err.response?.data?.msg ||
+              err.response?.data?.message ||
+              "Could not load documents.",
           );
         }
       } finally {
@@ -597,7 +600,12 @@ export default function RagDocuments() {
         setSelected(null);
       }
     } catch (err) {
-      setDocsError(err.message || "Delete failed");
+      setDocsError(
+        err.response?.data?.msg ||
+          err.response?.data?.message ||
+          err.message ||
+          "Delete failed",
+      );
     }
   };
 
