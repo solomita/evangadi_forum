@@ -26,7 +26,7 @@ export const ragService = {
       params: { query: q, ...(k ? { k } : {}) },
     });
     return res.data.data;
-  }
+  },
   queryDocument: async (id, q) => {
     const res = await apiClient.post(`/api/rag/documents/${id}/query`, {
       query: q,
