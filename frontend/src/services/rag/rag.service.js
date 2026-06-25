@@ -32,9 +32,8 @@ export const ragService = {
       query: q,
     });
     return res.data.data;
-  }
+  },
   fetchPdfObjectUrl: async (id) => {
-    const res = await apiClient.get(`/api/rag/documents/${id}/file`, {
       responseType: "blob",
     });
     return res.data;
