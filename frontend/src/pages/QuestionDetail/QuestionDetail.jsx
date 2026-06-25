@@ -67,9 +67,9 @@ export default function QuestionDetail() {
     };
   }, [questionHash]);
 
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-     };
+const triggerToast = msg => {
+  setToastMessage(prev => (prev === msg ? `${msg} ` : msg));
+};
   useEffect(() => {
      if (!toastMessage) return undefined;
      const id = setTimeout(() => setToastMessage(''), 3000);
