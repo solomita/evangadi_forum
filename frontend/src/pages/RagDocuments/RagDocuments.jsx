@@ -527,7 +527,7 @@ export default function RagDocuments() {
       }
     };
   }, [
-    selected?.document_id,
+    selected?.documentId,
     selected?.status,
     documents,
     scheduleDocumentPolling,
