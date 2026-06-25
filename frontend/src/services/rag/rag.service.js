@@ -4,7 +4,7 @@ export const ragService = {
   listDocuments: async () => {
     const res = await apiClient.get("/api/rag/documents");
     return res.data.data || [];
-  }
+  },
   uploadPdf: async (file, onProgress) => {
     const form = new FormData();
     form.append("file", file);
