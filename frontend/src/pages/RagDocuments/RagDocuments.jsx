@@ -798,10 +798,10 @@ export default function RagDocuments() {
             // which is the React-recommended way to "reset state on prop change".
 
             <DocumentWorkspace
-              key={selected.document_id}
-              documentId={selected.document_id}
+              key={selected.documentId}
+              documentId={selected.documentId}
               title={selected.title}
-              byteSize={selected.byte_size}
+              byteSize={selected.byteSize}
             />
           )}
         </main>
