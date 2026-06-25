@@ -93,7 +93,7 @@ export async function deleteDocumentById(id) {
   return result.affectedRows > 0;
 }
 
-// Legacy export kept for compatibility (multer uses UPLOADS_DIR directly)
+// Legacy export kept for compatibility.
 export function uploadsDir() {
   return UPLOADS_DIR;
 }
