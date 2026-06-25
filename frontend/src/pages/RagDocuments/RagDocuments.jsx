@@ -755,8 +755,8 @@ export default function RagDocuments() {
                     <button
                       type="button"
                       className={styles.deleteBtn}
-                      onClick={() => handleDelete(doc.document_id)}
-                      aria-label={`Delete ${doc.title || `document ${doc.document_id}`}`}
+                      onClick={() => handleDelete(doc.documentId)}
+                      aria-label={`Delete ${doc.title || `document ${doc.documentId}`}`}
                       title="Delete"
                     >
                       🗑️
