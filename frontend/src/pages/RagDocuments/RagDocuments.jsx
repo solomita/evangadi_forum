@@ -171,7 +171,7 @@ function DocumentWorkspace({ documentId, title, byteSize }) {
     try {
       const result = await ragService.searchInDocument(documentId, searchQuery);
 
-      setSearchResults(result.chunks || []);
+      setSearchResults(result.results || []);
     } catch (err) {
       setSearchError(err.response?.data?.message || "Search failed.");
     } finally {
