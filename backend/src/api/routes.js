@@ -3,9 +3,8 @@ import authRoutes from "./auth/routes/auth.routes.js";
 import answerRoutes from "./answer/routes/answer.routes.js";
 import questionRoutes from "./question/routes/question.routes.js";
 import answerFitRoutes from "./questions/routes/answer-fit.routes.js";
-import ragFileRoutes from "./rag/routes/rag-file.routes.js";
 import ragRoutes from "./rag/routes/rag.routes.js";
-import ragRoute from "./rag/routes/rag.routes.js";
+import ragFileRoutes from "./rag/routes/rag-file.routes.js";
 
 export const mainRouter = express.Router();
 
@@ -17,12 +16,10 @@ mainRouter.use("/answers", answerRoutes);
 
 //  /api/questions
 mainRouter.use("/questions", questionRoutes);
-
 mainRouter.use("/questions", answerFitRoutes);
 
-// rag routes
+// /api/rag
 mainRouter.use("/rag", ragRoutes);
-// /api/rag/documents
-mainRouter.use("/rag/documents", ragFileRoutes);
 
-mainRouter.use("/rag", ragRoute);
+// /api/rag/documents/:documentId/file (PDF preview streaming)
+mainRouter.use("/rag/documents", ragFileRoutes);

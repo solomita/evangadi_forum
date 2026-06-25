@@ -1,37 +1,47 @@
-
 import { Router } from "express";
-import express from 'express';
-import { listDocumentsController } from '../controller/rag.controller.js';
 import { authenticateUser } from "../../../middleware/authentication.js";
-import { documentIdParamValidation } from "../validations/rag.validation.js";
-import { getDocumentMetaController } from "../controller/rag.controller.js";
-import { searchInDocumentValidation } from "../validations/rag.validation.js";
-import { searchInDocumentController } from "../controller/rag.controller.js";
+import {
+  handlePdfUpload,
+  createDocumentMulterErrorHandler,
+} from "../../../middleware/rag.upload.config.js";
+import {
+  documentIdParamValidation,
+  searchInDocumentValidation,
+  queryDocumentValidation,
+} from "../validations/rag.validation.js";
+import {
+  getDocumentMetaController,
+  listDocumentsController,
+  searchInDocumentController,
+  createDocumentController,
+  queryDocumentController,
+} from "../controller/rag.controller.js";
 
 const ragRoutes = Router();
-// Define RAG routes here
-ragRoutes.get("/documents/:documentId",
-   authenticateUser,
-    documentIdParamValidation,
-    getDocumentMetaController);
 
-export default ragRoutes;
+ragRoutes.use(authenticateUser);
 
+ragRoutes.get("/documents", listDocumentsController);
 
-const router = express.Router();
+ragRoutes.post(
+  "/documents",
+  handlePdfUpload,
+  createDocumentMulterErrorHandler,
+  createDocumentController,
+);
 
-router.get('/documents', authenticateUser, listDocumentsController);
+ragRoutes.get("/documents/:documentId", documentIdParamValidation, getDocumentMetaController);
 
-export default router;
-
-
-const ragRoute = express.Router();
-
-ragRoute.get(
+ragRoutes.get(
   "/documents/:documentId/search",
-  authenticateUser,
   searchInDocumentValidation,
   searchInDocumentController,
 );
 
-export default ragRoute;
+ragRoutes.post(
+  "/documents/:documentId/query",
+  queryDocumentValidation,
+  queryDocumentController,
+);
+
+export default ragRoutes;

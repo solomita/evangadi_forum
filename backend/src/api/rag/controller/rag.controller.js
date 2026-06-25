@@ -1,10 +1,12 @@
 import { StatusCodes } from 'http-status-codes';
-import { getDocumentMetaService } from '../service/rag.service.js';
-import { listDocumentsForUserService } from '../service/rag.service.js';
-import { searchInDocumentService } from "../service/rag.service.js";
 import { BadRequestError } from "../../../utils/errors/index.js";
-import { createDocumentFromUploadService, queryDocumentService } from "../service/rag.service.js";
-
+import {
+  getDocumentMetaService,
+  listDocumentsForUserService,
+  searchInDocumentService,
+  createDocumentFromUploadService,
+  queryDocumentService,
+} from "../service/rag.service.js";
 
 export const getDocumentMetaController = async (req, res, next) => {
   try {
@@ -16,6 +18,11 @@ export const getDocumentMetaController = async (req, res, next) => {
       success: true,
       message: 'Document fetched successfully.',
       data: document,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const listDocumentsController = async (req, res, next) => {
   try {
@@ -27,6 +34,12 @@ export const listDocumentsController = async (req, res, next) => {
       success: true,
       message: 'Documents fetched successfully.',
       data: documents,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const searchInDocumentController = async (req, res, next) => {
   try {
     const { documentId } = req.params;
@@ -42,41 +55,45 @@ export const searchInDocumentController = async (req, res, next) => {
     res.status(StatusCodes.OK).json({
       success: true,
       message: "Ranked chunk excerpts",
-
-      export const createDocumentController = async (req, res, next) => {
-        try {
-          if (!req.file) {
-            throw new BadRequestError("PDF file required");
-          }
-
-          const result = await createDocumentFromUploadService(req.file, req.user.id);
-
-          res.status(StatusCodes.CREATED).json({
-            success: true,
-            message: "Document uploaded and processed.",
-            data: result,
-          });
-        } catch (error) {
-          next(error);
-        }
-      };
-
-      export const queryDocumentController = async (req, res, next) => {
-        try {
-          const { documentId } = req.params;
-          const { query } = req.body;
-          const userId = req.user.id;
-
-          const result = await queryDocumentService({ documentId, query, userId });
-
-          res.status(StatusCodes.OK).json({
-            success: true,
-            message: "Answer and citations",
-            data: result,
-          });
-        } catch (error) {
-          next(error);
-        }
-      };
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
+export const createDocumentController = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new BadRequestError("PDF file required");
+    }
+
+    const result = await createDocumentFromUploadService(req.file, req.user.id);
+
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Document uploaded and processed.",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const queryDocumentController = async (req, res, next) => {
+  try {
+    const { documentId } = req.params;
+    const { query } = req.body;
+    const userId = req.user.id;
+
+    const result = await queryDocumentService({ documentId, query, userId });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Answer and citations",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
