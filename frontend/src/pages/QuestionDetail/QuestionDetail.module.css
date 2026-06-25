@@ -373,7 +373,7 @@
 
 .postButton {
   cursor: pointer;
-  transition: opacity 0.2s ease, background-color 0.2s ease;
+  transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
 .postButton:hover:not([disabled]) {
