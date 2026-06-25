@@ -596,12 +596,11 @@ export default function RagDocuments() {
     try {
       await ragService.deleteDocument(id);
 
-      setDocuments((docs) => docs.filter((d) => d.document_id !== id));
+      setDocuments((docs) => docs.filter((d) => d.documentId !== id));
 
       setDocsError("");
 
-      if (selected?.document_id === id) {
-        // DocumentWorkspace unmounts (parent falls back to placeholder) and its
+      if (selected?.documentId === id) {
 
         // own cleanup revokes the blob URL — no manual reset needed here.
 
