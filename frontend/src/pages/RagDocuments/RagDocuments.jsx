@@ -737,11 +737,11 @@ export default function RagDocuments() {
                     >
                       <div className={styles.listItemContent}>
                         <span className={styles.listTitle}>
-                          {doc.title || `Document ${doc.document_id}`}
+                          {doc.title || `Document ${doc.documentId}`}
                         </span>
 
                         <span className={styles.listMeta}>
-                          {formatBytes(doc.byte_size)}
+                          {formatBytes(doc.byteSize)}
                         </span>
                       </div>
 
