@@ -35,6 +35,7 @@ export default function QuestionDetail() {
   const [isCheckingFit, setIsCheckingFit] = useState(false);
   const [error, setError] = useState(null);
   const [submitError, setSubmitError] = useState(null);
+  const [toastMessage, setToastMessage] = useState(''); // Toast state
 
   const isOwnQuestion =
     question && user ? Number(question.userId) === Number(user.id) : false;
@@ -46,19 +47,19 @@ export default function QuestionDetail() {
       setIsLoading(true);
       setError(null);
 
-      try {
+    try {
         const [questionData, similarResult] = await Promise.all([
           questionService.getSingleQuestion(questionHash),
           questionService.getSimilarQuestions(questionHash, {
             k: 5,
-            threshold: 0.72,
+            threshold: 0.75,
           }),
         ]);
 
         if (!isMounted) return;
 
         setQuestion(questionData);
-        setRelatedQuestions(similarResult?.data || []);
+        setRelatedQuestions(similarResult || []);
       } catch (err) {
         if (!isMounted) return;
         setError(err.message || "Failed to load question details.");
@@ -73,6 +74,15 @@ export default function QuestionDetail() {
       isMounted = false;
     };
   }, [questionHash]);
+
+const triggerToast = msg => {
+  setToastMessage(prev => (prev === msg ? `${msg} ` : msg));
+};
+  useEffect(() => {
+     if (!toastMessage) return undefined;
+     const id = setTimeout(() => setToastMessage(''), 3000);
+     return () => clearTimeout(id);
+   }, [toastMessage]);
 
   const handleCheckFit = async () => {
     if (answerText.trim().length < 20) {
@@ -136,8 +146,21 @@ export default function QuestionDetail() {
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-    } catch {
-      // Ignore clipboard failures.
+      triggerToast("Link copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy link: ", err);
+      
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = window.location.href;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        triggerToast("Link copied to clipboard!");
+      } catch (fallbackErr) {
+        triggerToast("Could not copy link automatically.");
+      }
     }
   };
 
@@ -171,6 +194,8 @@ export default function QuestionDetail() {
 
   return (
     <div className={styles.page}>
+     {toastMessage && (<div className={styles.toast} role="status" aria-live="polite">{toastMessage}</div>)}
+      
       <div className={styles.contentColumn}>
         <button
           className={styles.backLink}
@@ -204,11 +229,15 @@ export default function QuestionDetail() {
           </div>
 
           <div className={styles.questionActions}>
-            <button className={styles.secondaryAction} onClick={handleShare}>
+            <button className={styles.secondaryAction} onClick={handleShare}
+             title="Copy the page link to share this question"
+            >
               <Share2 size={14} />
               Share
             </button>
-            <span className={styles.answerCountPill}>
+            <span className={styles.answerCountPill}
+            title="How many answers this question has"
+            >
               <MessageSquare size={14} />
               {answers.length} Answers
             </span>
@@ -323,7 +352,7 @@ export default function QuestionDetail() {
                   className={`${styles.fitPanel} ${styles[`fitPanel--${fitResult.level}`]}`}
                 >
                   <p className={styles.fitHeading}>
-                    Answer fit: {fitResult.level} ({fitResult.score}/100)
+                   {fitResult.level} FIT
                   </p>
                   <p className={styles.fitNote}>{fitResult.note}</p>
                 </div>
@@ -347,6 +376,7 @@ export default function QuestionDetail() {
               >
                 <p className={styles.relatedTitle}>{item.title}</p>
                 <div className={styles.relatedMeta}>
+                  <span>{item.author?.firstName || item.firstName} {item.author?.lastName || item.lastName}</span>
                   <span>
                     {item.firstName} {item.lastName}
                   </span>
