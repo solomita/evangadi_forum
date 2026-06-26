@@ -290,7 +290,27 @@ All routes are prefixed with `/api`. Protected routes require `Authorization: Be
 | `GET` | `/questions/:hash/similar` | Protected | Related questions by vector similarity |
 | `POST` | `/questions/:hash/answer-fit` | Protected | Score a draft answer 0–100 |
 | `POST` | `/answers` | Protected | Post an answer |
+| `DELETE` | `/rag/documents/:documentId` | Protected | Delete a RAG document (PDF + chunks + vectors) |
 | `GET` | `/health` | Public | Server health check |
+
+### `DELETE /api/rag/documents/:documentId`
+
+Permanently removes a RAG document owned by the authenticated user. The
+PDF is deleted from disk and the `documents` row is removed; its
+`document_chunks` and `document_chunk_vectors` are cleaned up automatically
+via `ON DELETE CASCADE`.
+
+- **Auth:** `Authorization: Bearer <token>` (required)
+- **Path param:** `documentId` — positive integer
+- **Responses:**
+  - `200 OK` — `{ "success": true, "message": "Document deleted successfully.", "data": { "id": 1 } }`
+  - `400 Bad Request` — `documentId` is missing or not a positive integer
+  - `401 Unauthorized` — missing or invalid token
+  - `404 Not Found` — no such document, or it belongs to another user
+
+A document already missing from disk is still removed from the database
+(the deletion is treated as successful), so the DB and filesystem can't
+drift apart.
 
 ---
 

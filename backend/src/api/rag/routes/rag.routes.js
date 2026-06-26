@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { authenticateUser } from "../../../middleware/authentication.js";
+import { deleteDocumentController } from "../controller/rag.controller.js";
+import { deleteDocumentValidation } from "../validations/rag.validation.js";
 import {
   handlePdfUpload,
   createDocumentMulterErrorHandler,
@@ -42,6 +44,12 @@ ragRoutes.post(
   "/documents/:documentId/query",
   queryDocumentValidation,
   queryDocumentController,
+);
+
+ragRoutes.delete(
+  "/documents/:documentId",
+  deleteDocumentValidation,
+  deleteDocumentController,
 );
 
 export default ragRoutes;

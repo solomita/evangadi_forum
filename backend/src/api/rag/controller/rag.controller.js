@@ -1,3 +1,4 @@
+import { deleteDocumentService } from "../service/rag.service.js";
 import { StatusCodes } from 'http-status-codes';
 import { BadRequestError } from "../../../utils/errors/index.js";
 import {
@@ -7,6 +8,23 @@ import {
   createDocumentFromUploadService,
   queryDocumentService,
 } from "../service/rag.service.js";
+
+export const deleteDocumentController = async (req, res, next) => {
+  try {
+    const { documentId } = req.params;
+    const userId = req.user.id;
+
+    const data = await deleteDocumentService({ documentId, userId });
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Document deleted successfully.",
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getDocumentMetaController = async (req, res, next) => {
   try {

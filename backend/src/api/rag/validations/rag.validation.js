@@ -1,6 +1,16 @@
-import { body, param, query } from 'express-validator';
-import { validationErrorHandler } from '../../../middleware/validation-handler.js';
+import { body, param, query } from "express-validator";
+import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
+export const deleteDocumentValidation = [
+  param("documentId")
+    .notEmpty()
+    .withMessage("documentId is required")
+    .bail()
+    .isInt({ min: 1 })
+    .withMessage("documentId must be a positive integer")
+    .toInt(),
+  validationErrorHandler,
+];
 // Validates that :documentId in the URL is a positive integer
 export const documentIdParamValidation = [
   param('documentId')
