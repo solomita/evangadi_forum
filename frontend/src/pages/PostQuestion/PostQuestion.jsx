@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import MarkdownToolbar from "../../components/common/MardownToolbars/MarkdownToolbars.jsx";
+import MarkdownToolbar from "../../components/common/MarkdownToolbars/MarkdownToolbars.jsx";
 import { questionService } from "../../services/question/question.service.js";
 import styles from "./PostQuestion.module.css";
 

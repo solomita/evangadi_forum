@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import MarkdownToolbar from "../../components/common/MardownToolbars/MarkdownToolbars.jsx";
+import MarkdownToolbar from "../../components/common/MarkdownToolbars/MarkdownToolbars.jsx";
 import { MessageSquare, ArrowLeft, Share2 } from "lucide-react";
 import { questionService } from "../../services/question/question.service.js";
 import styles from "./QuestionDetail.module.css";
