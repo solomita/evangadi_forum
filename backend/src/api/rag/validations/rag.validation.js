@@ -11,7 +11,8 @@ export const deleteDocumentValidation = [
     .isInt({ min: 1 })
     .withMessage("documentId must be a positive integer")
     .toInt(),
-
+  validationErrorHandler,
+];
 // Validates that :documentId in the URL is a positive integer
 export const documentIdParamValidation = [
   param('documentId')
