@@ -147,7 +147,8 @@
   font-size: var(--text-sm);
   color: var(--text-primary);
   background: var(--surface);
-  transition: border-color var(--transition-fast),
+  transition:
+    border-color var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
@@ -167,7 +168,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  transition: border-color var(--transition-fast),
+  transition:
+    border-color var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
@@ -205,7 +207,9 @@
   font-weight: var(--font-bold);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
   line-height: 1;
 }
 
@@ -269,8 +273,10 @@
   font-weight: var(--font-medium);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .aiCoachBtn:hover:not(:disabled) {
@@ -352,7 +358,7 @@
 }
 
 .coachSuggestionItem::before {
-  content: '→';
+  content: "→";
   color: var(--primary);
   flex-shrink: 0;
   font-weight: var(--font-semibold);
@@ -376,7 +382,9 @@
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-md);
-  transition: color var(--transition-fast), background var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .cancelBtn:hover {
@@ -396,7 +404,9 @@
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   cursor: pointer;
-  transition: background var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .submitBtn:hover:not(:disabled) {
@@ -465,7 +475,9 @@
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-md);
-  transition: color var(--transition-fast), background var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .successBackBtn:hover {
@@ -504,7 +516,8 @@
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: background var(--transition-fast),
+  transition:
+    background var(--transition-fast),
     border-color var(--transition-fast);
 }
 

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import MarkdownToolbar from "../../components/common/MarkdownToolbars/MarkdownToolbars.jsx";
 import { questionService } from "../../services/question/question.service.js";
 import styles from "./PostQuestion.module.css";
 
@@ -26,6 +27,7 @@ export default function PostQuestion() {
 
   /* ── Success state ── */
   const [successData, setSuccessData] = useState(null); // { questionId, questionHash }
+  const textareaRef = useRef(null);
 
   /* ────────────────────────── Helpers ────────────────────────── */
 
@@ -82,39 +84,40 @@ export default function PostQuestion() {
     }
   }
 
- async function handleSubmit(e) {
-   e.preventDefault();
+  async function handleSubmit(e) {
+    e.preventDefault();
 
-   // 1. Prevent double submissions if already running
-   if (isSubmitting || isCoaching) return;
+    // 1. Prevent double submissions if already running
+    if (isSubmitting || isCoaching) return;
 
-   // 2. CLEAR THE ERROR NOW so an old AI Coach error doesn't block the post form
-   setError(null);
+    // 2. CLEAR THE ERROR NOW so an old AI Coach error doesn't block the post form
+    setError(null);
 
-   // 3. Run frontend validation rules
-   const errors = validate(formData);
-   if (Object.keys(errors).length > 0) {
-     setValidationErrors(errors);
-     return;
-   }
+    // 3. Run frontend validation rules
+    const errors = validate(formData);
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
 
-   // 4. Set loading states and submit
-   setIsSubmitting(true);
+    // 4. Set loading states and submit
+    setIsSubmitting(true);
 
-   try {
-     const data = await questionService.createQuestion(formData);
-     setSuccessData(data);
-   } catch (err) {
-     // Catch and display database or network errors
-     setError(err.message || "Failed to post question. Please try again.");
-   } finally {
-     setIsSubmitting(false);
-   }
- }
+    try {
+      const data = await questionService.createQuestion(formData);
+      setSuccessData(data);
+    } catch (err) {
+      // Catch and display database or network errors
+      setError(err.message || "Failed to post question. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   /* ────────────────────────── Success screen ─────────────────── */
   if (successData) {
-    const questionPayload = successData?.data || successData?.question || successData;
+    const questionPayload =
+      successData?.data || successData?.question || successData;
     const questionId = questionPayload?.id || successData?.question_id;
     const questionHash =
       questionPayload?.questionHash ||
@@ -301,61 +304,26 @@ export default function PostQuestion() {
             Minimum 10 characters.
           </p>
 
-          <div
-            className={`${styles.editorWrapper}${validationErrors.content ? ` ${styles.inputError}` : ""}`}
+          <MarkdownToolbar
+            textareaRef={textareaRef}
+            value={formData.content}
+            onChange={(newValue) =>
+              setFormData((prev) => ({ ...prev, content: newValue }))
+            }
+            disabled={isSubmitting}
+            hasError={Boolean(validationErrors.content)}
           >
-            {/* Minimal rich-text toolbar (cosmetic; real markdown entered by user) */}
-            <div className={styles.toolbar}>
-              <div className={styles.toolbarButtons}>
-                <button
-                  type="button"
-                  className={styles.toolbarBtn}
-                  title="Bold"
-                  aria-label="Bold"
-                >
-                  B
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.toolbarBtn} ${styles.toolbarBtnItalic}`}
-                  title="Italic"
-                  aria-label="Italic"
-                >
-                  I
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.toolbarBtn} ${styles.toolbarBtnCode}`}
-                  title="Code"
-                  aria-label="Code"
-                >
-                  {"</>"}
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.toolbarBtn} ${styles.toolbarBtnLink}`}
-                  title="Link"
-                  aria-label="Link"
-                >
-                  🔗
-                </button>
-              </div>
-              <span className={styles.charCount}>
-                {formData.content.length} characters
-              </span>
-            </div>
-
             <textarea
               id="question-content"
               name="content"
+              ref={textareaRef}
               className={styles.contentTextarea}
-              placeholder="Include all the information someone would need to answer your question... You can use Markdown to format your code!"
+              placeholder="Include all the information someone would need to answer your question... Use Markdown like **bold**, _italic_, `code`, [link](url)"
               value={formData.content}
               onChange={handleChange}
               disabled={isSubmitting}
             />
-          </div>
-
+          </MarkdownToolbar>
           {validationErrors.content && (
             <span className={styles.fieldError} role="alert">
               {validationErrors.content}
