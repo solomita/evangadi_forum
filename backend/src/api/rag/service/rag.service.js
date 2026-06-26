@@ -90,6 +90,7 @@ export const deleteDocumentService = async ({ documentId, userId }) => {
   );
 
   return { id: documentId };
+};
 
 export const getDocumentMetaService = async (documentId, userId) => {
   const sql = `
