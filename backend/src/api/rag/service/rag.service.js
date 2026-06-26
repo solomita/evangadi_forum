@@ -2,8 +2,6 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { safeExecute } from "../../../../db/config.js";
-import { safeExecute } from "../../../../db/config.js";
-import fs from "fs/promises";
 import { extractTextFromPDF } from "../../../utils/pdfParser.js";
 import { chunkText } from "../../../utils/chunk.js";
 import { NotFoundError, BadRequestError } from "../../../utils/errors/index.js";
