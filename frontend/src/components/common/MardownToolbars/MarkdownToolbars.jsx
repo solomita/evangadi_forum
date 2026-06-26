@@ -1,11 +1,17 @@
 import { Bold, Italic, Code2, Link2 } from "lucide-react";
 import styles from "./MarkdownToolbars.module.css";
 
-const MarkdownToolbar = ({ textareaRef, value, onChange, children }) => {
+const MarkdownToolbar = ({
+  textareaRef,
+  value,
+  onChange,
+  disabled = false,
+  hasError = false,
+  children,
+}) => {
   const applyFormat = (type) => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
-
+    if (!textarea || disabled || textarea.disabled) return;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selected = value.substring(start, end);
