@@ -56,7 +56,7 @@ export default function WhatsNewModal({ releases = [], onClose }) {
               )}
 
               <ul className={styles.highlights}>
-                {release.highlights.map((h, i) => (
+                {(Array.isArray(release.highlights) ? release.highlights : []).map((h, i) => (
                   <li key={i} className={styles.highlight}>
                     <span className={`${styles.tag} ${styles[`tag--${h.category}`] || ''}`}>
                       {CATEGORY_LABELS[h.category] || h.category}

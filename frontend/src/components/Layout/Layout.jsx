@@ -19,12 +19,15 @@ export default function Layout() {
   const [releases, setReleases] = useState([]);      // releases shown in the modal
   const [showModal, setShowModal] = useState(false);
   const [hasUnseen, setHasUnseen] = useState(false); // drives the navbar bell badge
-  const checkedRef = useRef(false);                  // run the unseen check once per session
+  const checkedUserRef = useRef(null);               // id of the user we last ran the unseen check for
 
   // On login, check for unseen releases and auto-open the modal if any exist.
+  // Tracking the user id (not a one-shot boolean) means a different user logging
+  // in during the same session gets their own check, and logout resets it.
   useEffect(() => {
-    if (!user || checkedRef.current) return;
-    checkedRef.current = true;
+    if (!user) { checkedUserRef.current = null; return; }
+    if (checkedUserRef.current === user.id) return;
+    checkedUserRef.current = user.id;
 
     releasesService
       .getUnseen()
@@ -47,14 +50,13 @@ export default function Layout() {
     }
   };
 
-  // Bell click: reopen showing recent releases (even if already seen).
+  // Bell click: always fetch the recent-releases view (even if already seen), so
+  // it doesn't reopen the narrower unseen subset that may be in state from login.
   const handleBellClick = async () => {
-    if (releases.length === 0) {
-      try {
-        const recent = await releasesService.getRecent();
-        setReleases(recent);
-      } catch {/* keep whatever we have */}
-    }
+    try {
+      const recent = await releasesService.getRecent();
+      setReleases(recent);
+    } catch {/* keep whatever we have */}
     setShowModal(true);
   };
 

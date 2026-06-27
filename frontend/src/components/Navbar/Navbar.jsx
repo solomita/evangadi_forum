@@ -125,7 +125,7 @@ export default function Navbar({
             title="What's new"
           >
             <Bell size={20} />
-            {hasUnseenReleases && <span className={styles.navbar__badge} />}
+            {hasUnseenReleases && <span className={styles.navbar__badge} aria-hidden="true" />}
           </button>
         )}
         <div className={styles.navbar__user}>
