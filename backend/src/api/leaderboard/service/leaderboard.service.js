@@ -29,7 +29,9 @@ const fetchBadgesForUsers = async (userIds) => {
 // in the all-time trust_score but cannot be isolated to a specific month.
 // Tie-breaker 1: most answers posted this month.
 // Tie-breaker 2: earliest user_id (longest-standing member wins).
-// Blocked users are excluded.
+// Only active users are included (limited/blocked/removed are excluded).
+// The month window is a half-open range on a UTC start-of-month so the SQL can
+// use a created_at index and stays consistent with the UTC `period` below.
 export const getMonthlyLeaderboardService = async () => {
   const rows = await safeExecute(
     `SELECT
@@ -44,15 +46,15 @@ export const getMonthlyLeaderboardService = async () => {
        SELECT a.user_id, COUNT(*) AS vote_count
        FROM answer_votes av
        INNER JOIN answers a ON a.answer_id = av.answer_id
-       WHERE YEAR(av.created_at)  = YEAR(NOW())
-         AND MONTH(av.created_at) = MONTH(NOW())
+       WHERE av.created_at >= DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-01')
+         AND av.created_at <  DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-01') + INTERVAL 1 MONTH
        GROUP BY a.user_id
      ) mv ON mv.user_id = u.user_id
      LEFT JOIN (
        SELECT user_id, COUNT(*) AS answer_count
        FROM answers
-       WHERE YEAR(created_at)  = YEAR(NOW())
-         AND MONTH(created_at) = MONTH(NOW())
+       WHERE created_at >= DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-01')
+         AND created_at <  DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-01') + INTERVAL 1 MONTH
        GROUP BY user_id
      ) ma ON ma.user_id = u.user_id
      LEFT JOIN user_moderation_status ums ON ums.user_id = u.user_id
@@ -66,8 +68,9 @@ export const getMonthlyLeaderboardService = async () => {
   const userIds = rows.map(r => r.userId);
   const badgeMap = await fetchBadgesForUsers(userIds);
 
+  // Compute the period label in UTC so it matches the UTC month window above.
   const now = new Date();
-  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
   return {
     period,
@@ -85,8 +88,9 @@ export const getMonthlyLeaderboardService = async () => {
 };
 
 // All-time leaderboard — top 3 by cumulative trust_score.
-// Tie-breaker: most total answers posted.
-// Blocked users are excluded.
+// Tie-breaker 1: most total answers posted.
+// Tie-breaker 2: earliest user_id (stable, deterministic ordering).
+// Only active users are included (limited/blocked/removed are excluded).
 export const getAllTimeLeaderboardService = async () => {
   const rows = await safeExecute(
     `SELECT
@@ -104,7 +108,7 @@ export const getAllTimeLeaderboardService = async () => {
      LEFT JOIN user_moderation_status ums ON ums.user_id = u.user_id
      WHERE (ums.status IS NULL OR ums.status = 'active')
        AND u.trust_score > 0
-     ORDER BY u.trust_score DESC, answerCount DESC
+     ORDER BY u.trust_score DESC, answerCount DESC, u.user_id ASC
      LIMIT 3`,
     []
   );
