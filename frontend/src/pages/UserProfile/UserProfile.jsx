@@ -54,7 +54,7 @@ export default function UserProfile() {
     ? new Date(profile.joinedAt).getFullYear()
     : null;
 
-  const displayBadges = (profile.badges || []).filter(b => b.badge_name !== 'Quick Responder Credit');
+  const displayBadges = (profile.badges || []).filter(b => b.name !== 'Quick Responder Credit');
 
   return (
     <div className={styles.page}>
@@ -108,8 +108,8 @@ export default function UserProfile() {
             {displayBadges.map((b, i) => (
               <span key={i} className={styles.badge}>
                 <Star size={11} />
-                {b.badge_name}
-                {b.period ? ` · ${b.period}` : ''}
+                {b.name}
+                {b.earnedAt ? ` · ${new Date(b.earnedAt).toLocaleDateString()}` : ''}
               </span>
             ))}
           </div>

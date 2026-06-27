@@ -346,7 +346,7 @@ export const getFlagHistoryService = async ({ page, limit, status }) => {
       []
     ),
     safeExecute(
-      `SELECT COUNT(*) AS total FROM moderation_flags ${whereClause}`,
+      `SELECT COUNT(*) AS total FROM moderation_flags mf ${whereClause}`,
       []
     ),
   ]);

@@ -126,7 +126,7 @@ const triggerToast = msg => {
         ...prev,
         answers: prev.answers.map(a =>
           a.id === answer.id
-            ? { ...a, voteCount: result.voteCount, userHasVoted: !answer.userHasVoted }
+            ? { ...a, voteCount: result.voteCount, userHasVoted: !a.userHasVoted }
             : a
         ),
       }));
@@ -315,6 +315,8 @@ const triggerToast = msg => {
                       className={`${styles.voteButton} ${answer.userHasVoted ? styles['voteButton--active'] : ''}`}
                       onClick={() => handleVote(answer)}
                       disabled={votingAnswerId === answer.id || Number(answer.user?.id) === Number(user?.id)}
+                      aria-pressed={Boolean(answer.userHasVoted)}
+                      aria-label={`${answer.userHasVoted ? 'Remove upvote from' : 'Upvote'} this answer (${answer.voteCount ?? 0} ${(answer.voteCount ?? 0) === 1 ? 'vote' : 'votes'})`}
                       title={Number(answer.user?.id) === Number(user?.id) ? 'You cannot vote on your own answer' : answer.userHasVoted ? 'Remove upvote' : 'Upvote this answer'}
                     >
                       <ThumbsUp size={14} />

@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { adminService } from '../../services/admin/admin.service.js';
+import { useAuth } from '../../contexts/AuthContext';
 import styles from './Admin.module.css';
 import ui from '../../styles/pageStates.module.css';
 
@@ -72,17 +73,17 @@ function QueueTab() {
 
   useEffect(() => { fetchQueue(1); }, [fetchQueue]);
 
-  const handleAction = async (postId, action) => {
-    if (actioningId === postId) return;
-    setActioningId(postId);
+  const handleAction = async (flagId, action) => {
+    if (actioningId === flagId) return;
+    setActioningId(flagId);
     setActionMsg(null);
     try {
       const fn = action === 'approve' ? adminService.approvePost
                : action === 'remove'  ? adminService.removePost
                : adminService.escalatePost;
-      const result = await fn(postId);
+      const result = await fn(flagId);
       setActionMsg(result.message || 'Done.');
-      setPosts(prev => prev.filter(p => p.postId !== postId));
+      setPosts(prev => prev.filter(p => p.flagId !== flagId));
     } catch (err) {
       setActionMsg(err.message || 'Action failed.');
     } finally {
@@ -114,7 +115,7 @@ function QueueTab() {
           <p className={styles.count}>{meta.total} post{meta.total !== 1 ? 's' : ''} pending review</p>
           <div className={styles.list}>
             {posts.map(post => (
-              <article key={post.postId} className={styles.card} data-category={post.moderationCategory}>
+              <article key={post.flagId} className={styles.card} data-category={post.moderationCategory}>
                 <div className={styles.cardBody}>
                   <div className={styles.cardMeta}>
                     <span className={`${styles.categoryPill} ${styles[`categoryPill--${post.moderationCategory}`]}`}>
@@ -149,20 +150,20 @@ function QueueTab() {
                   <div className={styles.actions}>
                     <button type="button"
                       className={`${styles.actionBtn} ${styles['actionBtn--approve']}`}
-                      onClick={() => handleAction(post.postId, 'approve')}
-                      disabled={actioningId === post.postId}>
+                      onClick={() => handleAction(post.flagId, 'approve')}
+                      disabled={actioningId === post.flagId}>
                       <CheckCircle size={14} /> Approve
                     </button>
                     <button type="button"
                       className={`${styles.actionBtn} ${styles['actionBtn--remove']}`}
-                      onClick={() => handleAction(post.postId, 'remove')}
-                      disabled={actioningId === post.postId}>
+                      onClick={() => handleAction(post.flagId, 'remove')}
+                      disabled={actioningId === post.flagId}>
                       <XCircle size={14} /> Remove
                     </button>
                     <button type="button"
                       className={`${styles.actionBtn} ${styles['actionBtn--escalate']}`}
-                      onClick={() => handleAction(post.postId, 'escalate')}
-                      disabled={actioningId === post.postId}>
+                      onClick={() => handleAction(post.flagId, 'escalate')}
+                      disabled={actioningId === post.flagId}>
                       <AlertTriangle size={14} /> Escalate
                     </button>
                   </div>
@@ -453,6 +454,7 @@ function FlagsTab() {
 const VALID_TABS = TABS.map(t => t.key);
 
 export default function Admin() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const activeTab = VALID_TABS.includes(tabParam) ? tabParam : 'queue';
@@ -460,6 +462,18 @@ export default function Admin() {
   const setActiveTab = (key) => {
     setSearchParams({ tab: key }, { replace: true });
   };
+
+  // Client-side role gate. The API already blocks non-admins, but without this a
+  // non-admin who navigates straight to /admin would just hit repeated 403s.
+  if (user && user.role !== 'admin') {
+    return (
+      <div className={styles.page} style={{ padding: '3rem', textAlign: 'center' }}>
+        <ShieldCheck size={28} aria-hidden />
+        <h2>Admin access required</h2>
+        <p>You don’t have permission to view this page.</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>

@@ -17,7 +17,9 @@ function handleLeaderboardError(error) {
 async function getMonthlyLeaderboard() {
   try {
     const response = await apiClient.get('/api/leaderboard/monthly');
-    return response.data?.data || { period: null, data: [] };
+    // Backend shape: { success, period, data[] }. Return the { period, data }
+    // object the page expects (returning response.data.data would drop period).
+    return { period: response.data?.period ?? null, data: response.data?.data ?? [] };
   } catch (error) {
     throw handleLeaderboardError(error);
   }
@@ -26,7 +28,8 @@ async function getMonthlyLeaderboard() {
 async function getAllTimeLeaderboard() {
   try {
     const response = await apiClient.get('/api/leaderboard/alltime');
-    return response.data?.data || { data: [] };
+    // Backend shape: { success, data[] }. Return { data } so callers can read .data.
+    return { data: response.data?.data ?? [] };
   } catch (error) {
     throw handleLeaderboardError(error);
   }
