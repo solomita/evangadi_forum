@@ -103,6 +103,14 @@ export default function Dashboard() {
     return text.length > 190 ? `${text.slice(0, 190)}...` : text;
   };
 
+  // Feed list returns the author as flat `userId`; semantic search nests it
+  // under `author`. Handle both shapes.
+  const isOwnThread = question => {
+    if (!user?.id) return false;
+    const authorId = question.author?.id ?? question.userId;
+    return authorId != null && String(authorId) === String(user.id);
+  };
+
   const isSearchActive = Boolean(
     (searchParams.get('q') || semanticQuery).trim(),
   );
@@ -223,7 +231,9 @@ export default function Dashboard() {
             {questions.map(question => (
               <li key={question.id}>
                 <article
-                  className={styles.dashboard__thread}
+                  className={`${styles.dashboard__thread} ${
+                    isOwnThread(question) ? styles.userOwnedAccentBorderCard : ''
+                  }`}
                   onClick={() => navigate(`/questions/${question.questionHash}`)}
                   onKeyDown={event => {
                     if (event.key === 'Enter' || event.key === ' ') {

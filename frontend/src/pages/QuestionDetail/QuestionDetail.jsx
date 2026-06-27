@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import MarkdownToolbar from "../../components/common/MarkdownToolbars/MarkdownToolbars.jsx";
-import { MessageSquare, ArrowLeft, Share2 } from "lucide-react";
+import { MessageSquare, ArrowLeft, Share2, ThumbsUp } from "lucide-react";
 import { questionService } from "../../services/question/question.service.js";
+import { answerService } from "../../services/answer/answer.service.js";
 import styles from "./QuestionDetail.module.css";
 import ui from "../../styles/pageStates.module.css";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -33,9 +34,12 @@ export default function QuestionDetail() {
   const textareaRef = useRef(null);
   const [isPosting, setIsPosting] = useState(false);
   const [isCheckingFit, setIsCheckingFit] = useState(false);
+  const [votingAnswerId, setVotingAnswerId] = useState(null);
   const [error, setError] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [toastMessage, setToastMessage] = useState(''); // Toast state
+  const [answerUnderReview, setAnswerUnderReview] = useState(false);
+  const [answerRejection, setAnswerRejection] = useState(null); // { reason, guidance }
 
   const isOwnQuestion =
     question && user ? Number(question.userId) === Number(user.id) : false;
@@ -112,6 +116,29 @@ const triggerToast = msg => {
     }
   };
 
+  const handleVote = async (answer) => {
+    if (votingAnswerId === answer.id) return;
+    setVotingAnswerId(answer.id);
+    try {
+      const result = answer.userHasVoted
+        ? await answerService.removeVote(answer.id)
+        : await answerService.addVote(answer.id);
+
+      setQuestion(prev => ({
+        ...prev,
+        answers: prev.answers.map(a =>
+          a.id === answer.id
+            ? { ...a, voteCount: result.voteCount, userHasVoted: !a.userHasVoted }
+            : a
+        ),
+      }));
+    } catch (err) {
+      setSubmitError(err.message || 'Could not register vote.');
+    } finally {
+      setVotingAnswerId(null);
+    }
+  };
+
   const handlePostAnswer = async () => {
     if (!question) return;
 
@@ -121,13 +148,19 @@ const triggerToast = msg => {
     }
 
     setSubmitError(null);
+    setAnswerRejection(null);
+    setAnswerUnderReview(false);
     setIsPosting(true);
 
     try {
-      const createdAnswer = await questionService.postAnswer(
-        question.id,
-        answerText.trim(),
-      );
+      const createdAnswer = await questionService.postAnswer(question.id, answerText.trim());
+
+      if (createdAnswer.flagged) {
+        setAnswerUnderReview(true);
+        setAnswerText('');
+        setFitResult(null);
+        return;
+      }
 
       setQuestion((prev) => ({
         ...prev,
@@ -137,7 +170,11 @@ const triggerToast = msg => {
       setAnswerText("");
       setFitResult(null);
     } catch (err) {
-      setSubmitError(err.message || "Failed to post answer. Please try again.");
+      if (err.code === 'CONTENT_MODERATION_REJECTED') {
+        setAnswerRejection({ reason: err.message, guidance: err.guidance });
+      } else {
+        setSubmitError(err.message || 'Failed to post answer. Please try again.');
+      }
     } finally {
       setIsPosting(false);
     }
@@ -149,7 +186,7 @@ const triggerToast = msg => {
       triggerToast("Link copied to clipboard!");
     } catch (err) {
       console.error("Failed to copy link: ", err);
-      
+
       try {
         const textArea = document.createElement("textarea");
         textArea.value = window.location.href;
@@ -158,7 +195,7 @@ const triggerToast = msg => {
         document.execCommand("copy");
         document.body.removeChild(textArea);
         triggerToast("Link copied to clipboard!");
-      } catch (fallbackErr) {
+      } catch {
         triggerToast("Could not copy link automatically.");
       }
     }
@@ -284,6 +321,20 @@ const triggerToast = msg => {
                   <div className={styles.answerBody}>
                     <ReactMarkdown components={markdownComponents}>{answer.content}</ReactMarkdown>
                   </div>
+                  <div className={styles.answerFooter}>
+                    <button
+                      type="button"
+                      className={`${styles.voteButton} ${answer.userHasVoted ? styles['voteButton--active'] : ''}`}
+                      onClick={() => handleVote(answer)}
+                      disabled={votingAnswerId === answer.id || Number(answer.user?.id) === Number(user?.id)}
+                      aria-pressed={Boolean(answer.userHasVoted)}
+                      aria-label={`${answer.userHasVoted ? 'Remove upvote from' : 'Upvote'} this answer (${answer.voteCount ?? 0} ${(answer.voteCount ?? 0) === 1 ? 'vote' : 'votes'})`}
+                      title={Number(answer.user?.id) === Number(user?.id) ? 'You cannot vote on your own answer' : answer.userHasVoted ? 'Remove upvote' : 'Upvote this answer'}
+                    >
+                      <ThumbsUp size={14} />
+                      <span>{answer.voteCount ?? 0}</span>
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -301,9 +352,22 @@ const triggerToast = msg => {
             </div>
           ) : (
             <>
-              {submitError ? (
-                <div className={styles.errorBanner}>{submitError}</div>
-              ) : null}
+              {submitError && <div className={styles.errorBanner}>{submitError}</div>}
+
+              {answerUnderReview && (
+                <div className={styles.reviewBanner}>
+                  <strong>Your answer is under review.</strong> It will appear here once approved by our moderation team.
+                </div>
+              )}
+
+              {answerRejection && (
+                <div className={styles.moderationBanner}>
+                  <strong>Answer not posted.</strong> {answerRejection.reason}
+                  {answerRejection.guidance && (
+                    <p className={styles.moderationGuidance}>{answerRejection.guidance}</p>
+                  )}
+                </div>
+              )}
 
               <div className={styles.editorShell}>
                 <MarkdownToolbar

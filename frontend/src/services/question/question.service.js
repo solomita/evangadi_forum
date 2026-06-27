@@ -15,19 +15,40 @@ function handleQuestionError(error) {
 
   const status = error.response.status;
   const backendMessage =
-    error.response.data?.msg || error.response.data?.message;
+    error.response.data?.error?.message ||
+    error.response.data?.msg ||
+    error.response.data?.message;
+
+  const errorCode = error.response.data?.error?.code;
+  const guidance  = error.response.data?.error?.guidance;
+
+  const existingHash    = error.response.data?.error?.existingQuestionHash;
+  const existingTitle   = error.response.data?.error?.existingQuestionTitle;
+  const similarHash     = error.response.data?.error?.similarQuestionHash;
+  const similarTitle    = error.response.data?.error?.similarQuestionTitle;
+
+  const make = (msg) => {
+    const e = new Error(msg);
+    if (errorCode)    e.code = errorCode;
+    if (guidance)     e.guidance = guidance;
+    if (existingHash)  e.existingQuestionHash  = existingHash;
+    if (existingTitle) e.existingQuestionTitle = existingTitle;
+    if (similarHash)   e.similarQuestionHash   = similarHash;
+    if (similarTitle)  e.similarQuestionTitle  = similarTitle;
+    return e;
+  };
 
   switch (status) {
     case 400:
-      return new Error(backendMessage || 'Invalid input data.');
+      return make(backendMessage || 'Invalid input data.');
     case 401:
-      return new Error(backendMessage || 'Unauthorized. Please log in again.');
+      return make(backendMessage || 'Unauthorized. Please log in again.');
+    case 403:
+      return make(backendMessage || 'Action not permitted.');
     case 500:
-      return new Error(
-        'Something went wrong on our end. Please try again later.',
-      );
+      return make('Something went wrong on our end. Please try again later.');
     default:
-      return new Error(backendMessage || 'An unexpected error occurred.');
+      return make(backendMessage || 'An unexpected error occurred.');
   }
 }
 
@@ -35,9 +56,9 @@ function handleQuestionError(error) {
  * Creates a new question in the forum.
  * @param {{ title: string, content: string }} questionData
  */
-async function createQuestion(questionData) {
+async function createQuestion(questionData, { force = false } = {}) {
   try {
-    const response = await apiClient.post('/api/questions', questionData);
+    const response = await apiClient.post('/api/questions', { ...questionData, force });
     return response.data;
   } catch (error) {
     throw handleQuestionError(error);
@@ -81,12 +102,17 @@ async function getSingleQuestion(questionHash) {
  */
 async function postAnswer(questionId, content) {
   try {
-    const response = await apiClient.post('/api/answers', {
-      questionId,
-      content,
-    });
-
-    return response.data?.data || response.data;
+    const response = await apiClient.post('/api/answers', { questionId, content });
+    const full = response.data;
+    const answer = full.data || {};
+    // The backend sets flagged/moderation on the answer object (full.data), not at
+    // the top level. Read from the answer first (falling back to any top-level
+    // fields) so flagged answers correctly surface the "under review" state.
+    return {
+      ...answer,
+      flagged: answer.flagged ?? full.flagged ?? false,
+      moderation: answer.moderation ?? full.moderation ?? null,
+    };
   } catch (error) {
     throw handleQuestionError(error);
   }
@@ -114,6 +140,15 @@ async function assessAnswerFit(questionHash, draftAnswer) {
  * Calls the AI Draft Coach endpoint to get feedback on a question draft.
  * @param {{ title: string, content: string }} draftData
  */
+async function generateAIContext({ title, content }) {
+  try {
+    const response = await apiClient.post('/api/questions/ai-search', { title, content });
+    return response.data?.answer || null;
+  } catch (error) {
+    throw handleQuestionError(error);
+  }
+}
+
 async function generateQuestionDraftCoach(draftData) {
   try {
     const response = await apiClient.post(
@@ -157,7 +192,7 @@ async function getSimilarQuestions(questionHash, { k = 5, threshold = 0.75 } = {
       params: { k, threshold },
     });
     return response.data?.data || [];
-  } catch (error) {
+  } catch {
     return []; // non-fatal: sidebar just stays empty
   }
 }
@@ -171,6 +206,7 @@ export {
   postAnswer,
   assessAnswerFit,
   generateQuestionDraftCoach,
+  generateAIContext,
 };
 
 /**
@@ -185,4 +221,5 @@ export const questionService = {
   postAnswer,
   assessAnswerFit,
   generateQuestionDraftCoach,
+  generateAIContext,
 };

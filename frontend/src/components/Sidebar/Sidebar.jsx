@@ -1,21 +1,22 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LogOut, MessageSquare, FileText } from 'lucide-react';
+import { LayoutDashboard, LogOut, MessageSquare, FileText, Trophy, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
-/**
- * Primary navigation: paths must match `App.jsx` routes.
- * Add rows here when you ship new sections (e.g. Admin, Bookmarks).
- */
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
-  { icon: MessageSquare, label: 'Your Topics', path: '/my-questions' },
-  { icon: FileText, label: 'Knowledge Base', path: '/rag-documents' },
+const BASE_NAV_ITEMS = [
+  { icon: LayoutDashboard, label: 'Home',           path: '/dashboard' },
+  { icon: MessageSquare,   label: 'Your Topics',    path: '/my-questions' },
+  { icon: FileText,        label: 'Knowledge Base', path: '/rag-documents' },
+  { icon: Trophy,          label: 'Leaderboard',    path: '/leaderboard' },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  const navItems = user?.role === 'admin'
+    ? [...BASE_NAV_ITEMS, { icon: Settings, label: 'Admin', path: '/admin' }]
+    : BASE_NAV_ITEMS;
 
   return (
     <aside className={styles.sidebar}>
@@ -47,7 +48,7 @@ export default function Sidebar() {
 
       <nav className={styles.sidebar__nav} aria-label='Main navigation'>
         <p className={styles.sidebar__navLabel}>Navigate</p>
-        {NAV_ITEMS.map(item => (
+        {navItems.map(item => (
           <div key={item.path} className={styles['sidebar__nav-item-wrapper']}>
             <NavLink
               to={item.path}

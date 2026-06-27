@@ -14,6 +14,15 @@ export const createAnswerController = async (req, res, next) => {
       userId,
     });
 
+    if (answer.flagged) {
+      return res.status(202).json({
+        success: true,
+        message: "Your answer has been submitted and is under review. It will be visible once approved.",
+        data: answer,
+        moderation: answer.moderation,
+      });
+    }
+
     return res.status(201).json({
       success: true,
       message: "Answer posted successfully",

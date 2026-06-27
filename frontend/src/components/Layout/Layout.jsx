@@ -1,7 +1,10 @@
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { releasesService } from '../../services/releases/releases.service.js';
 import Navbar from '../Navbar/Navbar.jsx';
 import Sidebar from '../Sidebar/Sidebar.jsx';
+import WhatsNewModal from '../WhatsNewModal/WhatsNewModal.jsx';
 import styles from './Layout.module.css';
 
 /**
@@ -12,6 +15,51 @@ export default function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  /* ── Changelog / "What's New" state ── */
+  const [releases, setReleases] = useState([]);      // releases shown in the modal
+  const [showModal, setShowModal] = useState(false);
+  const [hasUnseen, setHasUnseen] = useState(false); // drives the navbar bell badge
+  const checkedUserRef = useRef(null);               // id of the user we last ran the unseen check for
+
+  // On login, check for unseen releases and auto-open the modal if any exist.
+  // Tracking the user id (not a one-shot boolean) means a different user logging
+  // in during the same session gets their own check, and logout resets it.
+  useEffect(() => {
+    if (!user) { checkedUserRef.current = null; return; }
+    if (checkedUserRef.current === user.id) return;
+    checkedUserRef.current = user.id;
+
+    releasesService
+      .getUnseen()
+      .then(({ data, count }) => {
+        if (count > 0) {
+          setReleases(data);
+          setHasUnseen(true);
+          setShowModal(true);
+        }
+      })
+      .catch(() => {/* non-fatal: changelog is best-effort */});
+  }, [user]);
+
+  // Dismissing the auto-shown modal marks everything seen and clears the badge.
+  const handleCloseModal = () => {
+    setShowModal(false);
+    if (hasUnseen) {
+      setHasUnseen(false);
+      releasesService.markSeen().catch(() => {});
+    }
+  };
+
+  // Bell click: always fetch the recent-releases view (even if already seen), so
+  // it doesn't reopen the narrower unseen subset that may be in state from login.
+  const handleBellClick = async () => {
+    try {
+      const recent = await releasesService.getRecent();
+      setReleases(recent);
+    } catch {/* keep whatever we have */}
+    setShowModal(true);
+  };
+
   /** Navbar title: keep in sync with routes in `App.jsx`. */
   const getTitle = () => {
     const path = location.pathname;
@@ -20,6 +68,9 @@ export default function Layout() {
     if (path === '/questions/ask') return 'Ask a question';
     if (path.startsWith('/questions/')) return 'Discussion';
     if (path === '/rag-documents') return 'Knowledge base';
+    if (path === '/leaderboard') return 'Leaderboard';
+    if (path.startsWith('/users/') && path.endsWith('/profile')) return 'Profile';
+    if (path === '/admin') return 'Admin';
     return 'Forum';
   };
 
@@ -36,6 +87,12 @@ export default function Layout() {
       return 'Read the thread, review related topics, and reply with markdown if you can help.';
     if (path === '/rag-documents')
       return 'Private PDF library: reader, semantic search, and AI answers with citations per document.';
+    if (path === '/leaderboard')
+      return 'Top contributors ranked by votes received this month and all time.';
+    if (path.startsWith('/users/') && path.endsWith('/profile'))
+      return 'Trust score, badges, and contribution stats for this member.';
+    if (path === '/admin')
+      return 'Manage the moderation queue, user roles, and flag history.';
     return '';
   };
 
@@ -48,6 +105,9 @@ export default function Layout() {
           subtitle={getSubtitle()}
           user={user}
           onLogout={logout}
+          showSearch={location.pathname === '/dashboard'}
+          hasUnseenReleases={hasUnseen}
+          onBellClick={handleBellClick}
         />
         <main className={styles.layout__main}>
           <div className={styles.layout__mainInner}>
@@ -84,6 +144,10 @@ export default function Layout() {
           </div>
         </footer>
       </div>
+
+      {showModal && (
+        <WhatsNewModal releases={releases} onClose={handleCloseModal} />
+      )}
     </div>
   );
 }

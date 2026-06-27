@@ -7,6 +7,7 @@ import {
   getSimilarQuestionsService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
+import { generateAIContextService } from "../service/aiSearch.service.js";
 
 export const getQuestionsController = async (req, res, next) => {
   try {
@@ -32,7 +33,7 @@ export const getSingleQuestionController = async (req, res, next) => {
   try {
     const { questionHash } = req.params;
 
-    const result = await getSingleQuestionService({ questionHash });
+    const result = await getSingleQuestionService({ questionHash, viewerId: req.user?.id ?? null });
 
     res.status(StatusCodes.OK).json({
       success: true,
@@ -46,16 +47,28 @@ export const getSingleQuestionController = async (req, res, next) => {
 
 export const createQuestionController = async (req, res, next) => {
   try {
-    const { title, content } = req.body;
+    const { title, content, force } = req.body;
 
     const result = await createQuestionWithVectorService({
       userId: req.user.id,
       title,
       content,
+      force: force === true,
     });
+
+    if (result.flagged) {
+      return res.status(202).json({
+        success: true,
+        flagged: true,
+        message: "Your question has been submitted and is under review. It will be visible once approved.",
+        data: result.question,
+        moderation: result.moderation,
+      });
+    }
 
     res.status(StatusCodes.CREATED).json({
       success: true,
+      flagged: false,
       message: "Question created successfully",
       data: result.question,
     });
@@ -95,6 +108,16 @@ export const getSimilarQuestionsController = async (req, res, next) => {
       data: result.data,
       meta: { ...result.meta, query: null, questionHash },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const generateAIContextController = async (req, res, next) => {
+  try {
+    const { title, content } = req.body;
+    const result = await generateAIContextService({ title, content });
+    res.status(StatusCodes.OK).json({ success: true, answer: result.answer });
   } catch (error) {
     next(error);
   }
