@@ -1,6 +1,11 @@
 import crypto from "crypto";
 import { safeExecute } from "../../../../db/config.js";
-import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
+import { BadRequestError, ForbiddenError, NotFoundError, ConflictError } from "../../../utils/errors/index.js";
+import {
+  moderateContent,
+  checkUserModerationStatus,
+  persistModerationFlag,
+} from "../../moderation/service/contentModerator.service.js";
 import {
   generateQuestionEmbedding,
   generateAIAnswer,
@@ -17,70 +22,177 @@ const generateQuestionHash = () => {
   return crypto.randomBytes(8).toString("hex");
 };
 
-export const createQuestionWithVectorService = async ({
-  userId,
-  title,
-  content,
-}) => {
+export const createQuestionWithVectorService = async ({ userId, title, content, force = false }) => {
   if (!userId) {
     throw new BadRequestError("User is required");
   }
 
-  const questionHash = generateQuestionHash();
+  const userStatus = await checkUserModerationStatus(userId);
+  if (!userStatus.allowed) {
+    throw new ForbiddenError(userStatus.reason, 'USER_POSTING_RESTRICTED');
+  }
 
-  const insertQuestionSql = `
-    INSERT INTO questions (question_hash, user_id, title, content)
-    VALUES (?, ?, ?, ?)
-  `;
+  const modDecision = await moderateContent({ postType: 'question', title, content });
 
-  const insertResult = await safeExecute(insertQuestionSql, [
-    questionHash,
-    userId,
-    title,
-    content,
-  ]);
+  if (modDecision.action === 'reject') {
+    const err = new BadRequestError(
+      modDecision.reason || 'Your question does not fit the scope of this forum.',
+      'CONTENT_MODERATION_REJECTED',
+    );
+    err.guidance = modDecision.guidance;
+    throw err;
+  }
 
-  const questionId = insertResult.insertId;
+  // ── Duplicate detection ────────────────────────────────────────────────────
+  // Generate embedding early so we can compare against the user's own history.
   const sourceText = normalizeQuestionText({ title, content });
+  let newEmbedding = null;
 
   try {
-    const { embedding } = await generateQuestionEmbedding(sourceText, {
-      taskType: "RETRIEVAL_DOCUMENT",
+    const { embedding } = await generateQuestionEmbedding(sourceText, { taskType: 'RETRIEVAL_DOCUMENT' });
+    newEmbedding = embedding;
+  } catch {
+    // Embedding unavailable — skip duplicate check, don't block the post.
+  }
+
+  if (newEmbedding) {
+    const existingRows = await safeExecute(
+      `SELECT qv.question_id, qv.embedding, q.question_hash, q.title
+       FROM question_vectors qv
+       JOIN questions q ON q.question_id = qv.question_id
+       WHERE q.user_id = ? AND qv.status = 'ready'`,
+      [userId],
+    );
+
+    const SIMILARITY_THRESHOLD = 0.85;
+    const similarQuestions = existingRows.filter(row => {
+      const emb = parseEmbedding(row.embedding);
+      return emb && cosineSimilarity(newEmbedding, emb) >= SIMILARITY_THRESHOLD;
     });
 
-    await storeQuestionVector({
-      questionId,
-      sourceText,
-      embedding,
-      status: "ready",
-    });
-  } catch (err) {
-    console.warn(
-      `[vector] Embedding failed for question ${questionId} — stored with status=failed:`,
-      err.message,
+    if (similarQuestions.length >= 3) {
+      // 3+ near-identical posts is suspected spam — flag for admin review.
+      // Still insert the question so the content is visible to the admin.
+      const questionHash = generateQuestionHash();
+      const insertResult = await safeExecute(
+        `INSERT INTO questions (question_hash, user_id, title, content) VALUES (?, ?, ?, ?)`,
+        [questionHash, userId, title, content],
+      );
+      const questionId = insertResult.insertId;
+      persistModerationFlag({
+        postType: 'question',
+        postId: questionId,
+        authorId: userId,
+        category: 'spam',
+        score: 1,
+        reason: `User posted ${similarQuestions.length} near-identical questions (duplicate spam).`,
+      }).catch(e => console.error('[duplicate] Flag persist failed:', e.message));
+      storeQuestionVector({ questionId, sourceText, embedding: newEmbedding, status: 'ready' })
+        .catch(e => console.error('[vector] Store failed:', e.message));
+      return {
+        question: { id: questionId, questionHash, title, content, userId },
+        flagged: true,
+        moderation: { category: 'spam', guidance: 'Your question has been flagged for review due to repeated similar submissions.' },
+      };
+    }
+
+    if (similarQuestions.length >= 1) {
+      const match = similarQuestions[0];
+      const err = new ConflictError(
+        'You already have a very similar question posted.',
+        'DUPLICATE_QUESTION',
+      );
+      err.existingQuestionHash = match.question_hash;
+      err.existingQuestionTitle = match.title;
+      throw err;
+    }
+  }
+  // ── End duplicate detection ────────────────────────────────────────────────
+
+  // ── Forum-wide similar question suggestion ────────────────────────────────
+  // Warn the submitter if a very similar question already exists from any user.
+  // Skipped when force=true (user explicitly chose to post anyway).
+  if (newEmbedding && !force) {
+    const FORUM_SIMILARITY_THRESHOLD = 0.88;
+    const forumRows = await safeExecute(
+      `SELECT qv.question_id, qv.embedding, q.question_hash, q.title
+       FROM question_vectors qv
+       JOIN questions q ON q.question_id = qv.question_id
+       LEFT JOIN moderation_flags mf ON mf.post_type = 'question'
+         AND mf.post_id = q.question_id AND mf.queue_status = 'pending'
+       WHERE q.user_id != ? AND qv.status = 'ready' AND mf.flag_id IS NULL
+       ORDER BY q.created_at DESC
+       LIMIT 500`,
+      [userId],
     );
-    await storeQuestionVector({
-      questionId,
-      sourceText,
-      embedding: [],
-      status: "failed",
-    });
+
+    let bestSim = 0;
+    let bestMatch = null;
+    for (const row of forumRows) {
+      const emb = parseEmbedding(row.embedding);
+      if (!emb) continue;
+      const sim = cosineSimilarity(newEmbedding, emb);
+      if (sim > bestSim) { bestSim = sim; bestMatch = row; }
+    }
+
+    if (bestSim >= FORUM_SIMILARITY_THRESHOLD && bestMatch) {
+      const err = new ConflictError(
+        'A very similar question already exists in the forum.',
+        'SIMILAR_QUESTION_EXISTS',
+      );
+      err.similarQuestionHash  = bestMatch.question_hash;
+      err.similarQuestionTitle = bestMatch.title;
+      throw err;
+    }
+  }
+  // ── End forum-wide check ──────────────────────────────────────────────────
+
+  const questionHash = generateQuestionHash();
+
+  const insertResult = await safeExecute(
+    `INSERT INTO questions (question_hash, user_id, title, content) VALUES (?, ?, ?, ?)`,
+    [questionHash, userId, title, content],
+  );
+
+  const questionId = insertResult.insertId;
+
+  if (modDecision.action === 'flag') {
+    persistModerationFlag({
+      postType: 'question',
+      postId: questionId,
+      authorId: userId,
+      category: modDecision.category,
+      score: modDecision.score,
+      reason: modDecision.reason,
+    }).catch(e => console.error('[moderation] Flag persist failed for question:', e.message));
+  }
+
+  // Embedding was already generated above for duplicate check — reuse it.
+  if (newEmbedding) {
+    await storeQuestionVector({ questionId, sourceText, embedding: newEmbedding, status: "ready" });
+  } else {
+    try {
+      const { embedding } = await generateQuestionEmbedding(sourceText, { taskType: "RETRIEVAL_DOCUMENT" });
+      await storeQuestionVector({ questionId, sourceText, embedding, status: "ready" });
+    } catch (err) {
+      console.warn(`[vector] Embedding failed for question ${questionId}:`, err.message);
+      await storeQuestionVector({ questionId, sourceText, embedding: [], status: "failed" });
+    }
   }
 
   return {
-    question: {
-      id: questionId,
-      questionHash,
-      title,
-      content,
-      userId,
-    },
+    question: { id: questionId, questionHash, title, content, userId },
+    flagged: modDecision.action === 'flag',
+    moderation: modDecision.action === 'flag'
+      ? { category: modDecision.category, guidance: modDecision.guidance }
+      : null,
   };
 };
 
 const buildQuestionFilters = (filters) => {
-  const conditions = [];
-  const params = [];
+  // Always exclude pending-flagged questions, unless the viewer is the author.
+  const conditions = ["(mf_pending.flag_id IS NULL OR q.user_id = ?)"];
+  const params = [filters.userId ?? null];
 
   if (filters.search) {
     conditions.push("(q.title LIKE ? OR q.content LIKE ?)");
@@ -93,17 +205,7 @@ const buildQuestionFilters = (filters) => {
     params.push(filters.userId);
   }
 
-  if (conditions.length === 0) {
-    return {
-      whereClause: "",
-      params,
-    };
-  }
-
-  return {
-    whereClause: `WHERE ${conditions.join(" AND ")}`,
-    params,
-  };
+  return { whereClause: `WHERE ${conditions.join(" AND ")}`, params };
 };
 
 const fetchQuestionDetailsByIds = async (ids) => {
@@ -298,6 +400,10 @@ export const getQuestionsService = async (filters = {}) => {
       ON u.user_id = q.user_id
     LEFT JOIN answers a
       ON a.question_id = q.question_id
+    LEFT JOIN moderation_flags mf_pending
+      ON mf_pending.post_type = 'question'
+      AND mf_pending.post_id = q.question_id
+      AND mf_pending.queue_status = 'pending'
     ${whereClause}
     GROUP BY
       q.question_id,
@@ -315,7 +421,7 @@ export const getQuestionsService = async (filters = {}) => {
 
   return safeExecute(listSql, params);
 };
-export const getSingleQuestionService = async ({ questionHash }) => {
+export const getSingleQuestionService = async ({ questionHash, viewerId = null }) => {
   const normalizedAnswerLimit = 100;
 
   const questionSql = `
@@ -335,7 +441,12 @@ export const getSingleQuestionService = async ({ questionHash }) => {
       ON u.user_id = q.user_id
     LEFT JOIN answers a
       ON a.question_id = q.question_id
+    LEFT JOIN moderation_flags mf_pending
+      ON mf_pending.post_type = 'question'
+      AND mf_pending.post_id = q.question_id
+      AND mf_pending.queue_status = 'pending'
     WHERE q.question_hash = ?
+      AND (mf_pending.flag_id IS NULL OR q.user_id = ?)
     GROUP BY
       q.question_id,
       q.question_hash,
@@ -348,7 +459,9 @@ export const getSingleQuestionService = async ({ questionHash }) => {
       u.last_name
   `;
 
-  const questionRows = await safeExecute(questionSql, [questionHash]);
+  // viewerId is the author guard: a pending-flagged question is hidden (404) from
+  // everyone except its author, matching how pending answers are hidden below.
+  const questionRows = await safeExecute(questionSql, [questionHash, viewerId]);
 
   if (questionRows.length === 0) {
     throw new NotFoundError("Question not found");
@@ -364,21 +477,32 @@ export const getSingleQuestionService = async ({ questionHash }) => {
       a.updated_at AS updatedAt,
       au.user_id AS userId,
       au.first_name AS userFirstName,
-      au.last_name AS userLastName
+      au.last_name AS userLastName,
+      COUNT(DISTINCT av.user_id) AS voteCount,
+      MAX(CASE WHEN av.user_id = ? THEN 1 ELSE 0 END) AS userHasVoted
     FROM answers a
-    JOIN users au
-      ON au.user_id = a.user_id
+    JOIN users au ON au.user_id = a.user_id
+    LEFT JOIN answer_votes av ON av.answer_id = a.answer_id
+    LEFT JOIN moderation_flags mf_pending
+      ON mf_pending.post_type = 'answer'
+      AND mf_pending.post_id = a.answer_id
+      AND mf_pending.queue_status = 'pending'
     WHERE a.question_id = ?
+      AND (mf_pending.flag_id IS NULL OR a.user_id = ?)
+    GROUP BY a.answer_id, a.content, a.created_at, a.updated_at,
+             au.user_id, au.first_name, au.last_name
     ORDER BY a.created_at DESC
     LIMIT ${normalizedAnswerLimit}
   `;
 
-  const answerRows = await safeExecute(answersSql, [question.id]);
+  const answerRows = await safeExecute(answersSql, [viewerId, question.id, viewerId]);
   const answers = answerRows.map((row) => ({
     id: row.id,
     content: row.content,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    voteCount: Number(row.voteCount),
+    userHasVoted: Boolean(Number(row.userHasVoted)),
     user: {
       id: row.userId,
       firstName: row.userFirstName,

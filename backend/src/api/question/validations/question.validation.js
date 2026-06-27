@@ -14,6 +14,12 @@ export const createQuestionValidation = [
     .trim()
     .isLength({ min: 10, max: 10000 }).withMessage("Content must be between 10 and 10,000 characters"),
 
+  // Optional flag to bypass the forum-wide similar-question check ("post anyway").
+  body("force")
+    .optional()
+    .isBoolean().withMessage("force must be a boolean")
+    .toBoolean(),
+
   validationErrorHandler,
 ];
 
