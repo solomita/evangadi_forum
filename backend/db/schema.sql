@@ -179,7 +179,7 @@ CREATE TABLE `user_badges` (
     `badge_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `badge_name` VARCHAR(50) NOT NULL,
-    `period` VARCHAR(7) NOT NULL DEFAULT '',
+    `period` VARCHAR(64) NOT NULL DEFAULT '',
     `earned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE,
     UNIQUE KEY `uniq_user_badge_period` (`user_id`, `badge_name`, `period`),
