@@ -14,10 +14,11 @@ CREATE TABLE `users` (
     `last_name` VARCHAR(50) NOT NULL,
     `email` VARCHAR(320) NOT NULL UNIQUE,
     `password_hash` VARCHAR(255) NOT NULL,
+    `trust_score` INT NOT NULL DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CHECK (`email` = LOWER(`email`)),
-    
+
     INDEX `idx_users_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -38,7 +39,7 @@ CREATE TABLE `user_email_verifications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 4. Questions Table
+-- 3. Questions Table
 -- Stores the main questions posted by users.
 -- Supports full-text search on title and content for exact match search.
 -- -----------------------------------------------------------------------------
@@ -64,7 +65,7 @@ CREATE TABLE `questions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 3. Question Vectors Table
+-- 4. Question Vectors Table
 -- Stores embeddings for the AI Semantic Search feature (Gemini default model).
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS `question_vectors`;
@@ -82,7 +83,7 @@ CREATE TABLE `question_vectors` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 4. Answers Table
+-- 5. Answers Table
 -- Stores answers to questions.
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS `answers`;
@@ -106,7 +107,106 @@ CREATE TABLE `answers` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 5. RAG: user-owned PDF documents, text chunks, and chunk embeddings
+-- 6. Answer Votes Table
+-- Upvote-only; one vote per user per answer enforced by primary key.
+-- Vote count is derived at query time (COUNT(*) GROUP BY answer_id).
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `answer_votes`;
+CREATE TABLE `answer_votes` (
+    `answer_id` INT NOT NULL,
+    `user_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`answer_id`, `user_id`),
+    FOREIGN KEY (`answer_id`) REFERENCES `answers`(`answer_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE,
+    INDEX `idx_answer_votes_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 7. Moderation Flags Table
+-- Every Track B (offensive) post flagged by the AI lands here.
+-- The admin queue reads this table. Post remains hidden until reviewed.
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `moderation_flags`;
+CREATE TABLE `moderation_flags` (
+    `flag_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `post_type` ENUM('question', 'answer') NOT NULL,
+    `post_id` INT NOT NULL,
+    `author_id` INT NOT NULL,
+    `category` ENUM('spam', 'harassment', 'off_topic', 'low_quality') NOT NULL,
+    `moderation_score` DECIMAL(4,3) NOT NULL,
+    `ai_reason` TEXT NOT NULL,
+    `queue_status` ENUM('pending', 'approved', 'removed') NOT NULL DEFAULT 'pending',
+    `has_revision` TINYINT(1) NOT NULL DEFAULT 0,
+    `flagged_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `reviewed_at` TIMESTAMP NULL,
+    `reviewed_by` INT NULL,
+    FOREIGN KEY (`author_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reviewed_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL,
+    INDEX `idx_mf_queue` (`queue_status`, `flagged_at`),
+    INDEX `idx_mf_author` (`author_id`),
+    INDEX `idx_mf_post` (`post_type`, `post_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 8. User Moderation Status Table
+-- One row per user who has received at least one moderation incident.
+-- Tracks current block state and incident count for the escalation ladder.
+-- 60-day clean period resets incident_count to zero (handled by application).
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `user_moderation_status`;
+CREATE TABLE `user_moderation_status` (
+    `user_id` INT PRIMARY KEY,
+    `incident_count` INT NOT NULL DEFAULT 0,
+    `status` ENUM('active', 'limited', 'blocked', 'removed') NOT NULL DEFAULT 'active',
+    `blocked_until` TIMESTAMP NULL,
+    `last_incident_at` TIMESTAMP NULL,
+    `last_reset_at` TIMESTAMP NULL,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE,
+    INDEX `idx_ums_status` (`status`),
+    INDEX `idx_ums_blocked_until` (`blocked_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 9. User Badges Table
+-- Stores earned badges. period is '' for one-time badges, 'YYYY-MM' for
+-- monthly champion entries (same user can win multiple months).
+-- UNIQUE KEY prevents earning the same badge twice in the same period.
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `user_badges`;
+CREATE TABLE `user_badges` (
+    `badge_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `badge_name` VARCHAR(50) NOT NULL,
+    `period` VARCHAR(64) NOT NULL DEFAULT '',
+    `earned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE,
+    UNIQUE KEY `uniq_user_badge_period` (`user_id`, `badge_name`, `period`),
+    INDEX `idx_user_badges_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 10. Learning Hint Cache Table
+-- Caches AI scope check and context responses to avoid redundant Gemini calls
+-- for identical or near-identical inputs. Keyed by SHA-256 of normalised input.
+-- Expired rows are cleaned up by a background job.
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `learning_hint_cache`;
+CREATE TABLE `learning_hint_cache` (
+    `cache_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `cache_key` CHAR(64) NOT NULL,
+    `hint_type` ENUM('scope_check', 'ai_context', 'draft_coach') NOT NULL,
+    `response_json` JSON NOT NULL,
+    `hit_count` INT NOT NULL DEFAULT 0,
+    `expires_at` TIMESTAMP NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uniq_lhc_key` (`cache_key`),
+    INDEX `idx_lhc_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 11. RAG: user-owned PDF documents, text chunks, and chunk embeddings
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS `documents`;
 CREATE TABLE `documents` (
