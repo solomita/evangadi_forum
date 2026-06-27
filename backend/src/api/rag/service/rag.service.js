@@ -174,10 +174,10 @@ export const searchInDocumentService = async ({
   }
 
   // Step 2 - Embed the search query with the SAME model + dimensionality as the
-  // stored chunk vectors (getDocumentEmbedding). getQueryEmbedding leaves the
-  // dimension at the model default (3072), matching the chunks, so cosine
-  // similarity is valid. (Previously used a 768-dim embedding, which made every
-  // score 0 due to the dimension mismatch.)
+  // stored chunk vectors. getQueryEmbedding uses the same embedder as the chunks
+  // (the model's default dimensionality), so cosine similarity is valid. The query
+  // and chunk embeddings MUST share a dimensionality; previously the query used a
+  // smaller-dimension embedding, so the length mismatch made every score 0.
   const queryEmbedding = await getQueryEmbedding(normalizedQuery);
 
   // Step 3 - Fetch all chunk vectors for this document

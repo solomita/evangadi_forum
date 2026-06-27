@@ -368,7 +368,7 @@ function DocumentWorkspace({ documentId, title, byteSize }) {
                   <p className={styles.sourceRefs}>
                     Source references:{" "}
                     {askCitations.map((c, i) => (
-                      <span key={c.ref}>
+                      <span key={`${c.ref}-${c.chunkIndex}-${i}`}>
                         {i > 0 && " · "}
                         <span className={styles.sourceRef}>[{c.ref}]</span> →
                         chunk {c.chunkIndex}
