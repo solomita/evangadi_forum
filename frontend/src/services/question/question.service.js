@@ -104,8 +104,15 @@ async function postAnswer(questionId, content) {
   try {
     const response = await apiClient.post('/api/answers', { questionId, content });
     const full = response.data;
-    // Merge flagged/moderation onto the answer object so callers can check answer.flagged
-    return { ...(full.data || {}), flagged: full.flagged ?? false, moderation: full.moderation ?? null };
+    const answer = full.data || {};
+    // The backend sets flagged/moderation on the answer object (full.data), not at
+    // the top level. Read from the answer first (falling back to any top-level
+    // fields) so flagged answers correctly surface the "under review" state.
+    return {
+      ...answer,
+      flagged: answer.flagged ?? full.flagged ?? false,
+      moderation: answer.moderation ?? full.moderation ?? null,
+    };
   } catch (error) {
     throw handleQuestionError(error);
   }

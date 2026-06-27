@@ -100,7 +100,6 @@ export const generateQuestionDraftCoachService = async ({ title, content }) => {
   }
 
   const prompt = buildDraftCoachPrompt({ title, content });
-  let lastError;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -110,7 +109,6 @@ export const generateQuestionDraftCoachService = async ({ title, content }) => {
       });
       return parseDraftCoachResponse(response?.text || '');
     } catch (error) {
-      lastError = error;
       const msg = String(error?.message || '').toLowerCase();
 
       if (msg.includes('api key') || msg.includes('permission') || msg.includes('unauthorized')) {

@@ -441,7 +441,12 @@ export const getSingleQuestionService = async ({ questionHash, viewerId = null }
       ON u.user_id = q.user_id
     LEFT JOIN answers a
       ON a.question_id = q.question_id
+    LEFT JOIN moderation_flags mf_pending
+      ON mf_pending.post_type = 'question'
+      AND mf_pending.post_id = q.question_id
+      AND mf_pending.queue_status = 'pending'
     WHERE q.question_hash = ?
+      AND (mf_pending.flag_id IS NULL OR q.user_id = ?)
     GROUP BY
       q.question_id,
       q.question_hash,
@@ -454,7 +459,9 @@ export const getSingleQuestionService = async ({ questionHash, viewerId = null }
       u.last_name
   `;
 
-  const questionRows = await safeExecute(questionSql, [questionHash]);
+  // viewerId is the author guard: a pending-flagged question is hidden (404) from
+  // everyone except its author, matching how pending answers are hidden below.
+  const questionRows = await safeExecute(questionSql, [questionHash, viewerId]);
 
   if (questionRows.length === 0) {
     throw new NotFoundError("Question not found");

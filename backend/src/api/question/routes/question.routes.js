@@ -26,7 +26,7 @@ questionRoute.post("/", authenticateUser, createQuestionValidation, createQuesti
 
 questionRoute.post("/draft-coach", authenticateUser, draftCoachValidation, generateQuestionDraftCoachController);
 
-questionRoute.post("/ai-search", authenticateUser, generateAIContextController);
+questionRoute.post("/ai-search", authenticateUser, draftCoachValidation, generateAIContextController);
 
 questionRoute.get("/search", authenticateUser, searchQuestionsValidation, searchQuestionsSemanticController);
 

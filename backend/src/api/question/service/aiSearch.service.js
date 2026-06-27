@@ -33,7 +33,6 @@ export const generateAIContextService = async ({ title, content }) => {
   }
 
   const prompt = buildPrompt({ title, content });
-  let lastError;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -45,7 +44,6 @@ export const generateAIContextService = async ({ title, content }) => {
       if (!answer) throw new Error('Empty response');
       return { answer };
     } catch (err) {
-      lastError = err;
       const retryable = err.status === 503 || String(err.message).toLowerCase().includes('high demand');
       if (attempt === 1 && retryable) {
         await sleep(2500);

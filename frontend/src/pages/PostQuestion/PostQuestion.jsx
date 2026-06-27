@@ -159,7 +159,18 @@ export default function PostQuestion() {
         setSuccessData(data);
       }
     } catch (err) {
-      setError(err.message || "Failed to post question. Please try again.");
+      // force=true only skips the forum-wide similar check; moderation/duplicate
+      // errors can still occur, so handle them with the same specialized UX as
+      // handleSubmit instead of collapsing everything into a generic banner.
+      if (err.code === 'CONTENT_MODERATION_REJECTED') {
+        setModerationRejection({ reason: err.message, guidance: err.guidance });
+      } else if (err.code === 'DUPLICATE_QUESTION') {
+        setDuplicateWarning({ hash: err.existingQuestionHash, title: err.existingQuestionTitle });
+      } else if (err.code === 'SIMILAR_QUESTION_EXISTS') {
+        setSimilarQuestion({ hash: err.similarQuestionHash, title: err.similarQuestionTitle });
+      } else {
+        setError(err.message || "Failed to post question. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
