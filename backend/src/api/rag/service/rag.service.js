@@ -343,8 +343,18 @@ export const createDocumentFromUploadService= async (file, userId)=>{
         }
 
 
-        // 3 Chunking: Split text into overlapping segments 
-        const chunks = chunkText(text);
+        // 3 Chunking: split text into overlapping segments, sized via
+        // RAG_CHUNK_CHARS / RAG_CHUNK_OVERLAP (defaults 900 / 120).
+        const parsedChunkChars = Number.parseInt(process.env.RAG_CHUNK_CHARS, 10);
+        const parsedChunkOverlap = Number.parseInt(process.env.RAG_CHUNK_OVERLAP, 10);
+        const chunkChars =
+          Number.isInteger(parsedChunkChars) && parsedChunkChars > 0 ? parsedChunkChars : 900;
+        // chunkText() requires overlap < size; clamp so a misconfigured env
+        // (or a small RAG_CHUNK_CHARS) can't throw and crash the upload.
+        const requestedOverlap =
+          Number.isInteger(parsedChunkOverlap) && parsedChunkOverlap >= 0 ? parsedChunkOverlap : 120;
+        const chunkOverlap = Math.min(requestedOverlap, chunkChars - 1);
+        const chunks = chunkText(text, chunkChars, chunkOverlap);
         if (chunks.length === 0) {
             const err = new Error("No text found in PDF");
             err.statusCode = 400;
@@ -467,18 +477,24 @@ export const queryDocumentService = async ({ documentId, query, userId }) => {
     });
   }
 
-  // 5. Filter by threshold (optional, using process.env.RAG_SEARCH_THRESHOLD or fallback 0.45)
-  const searchThreshold = process.env.RAG_SEARCH_THRESHOLD
-    ? parseFloat(process.env.RAG_SEARCH_THRESHOLD)
-    : 0.45;
+  // 5. Filter by threshold (RAG_SEARCH_THRESHOLD, default 0.55). Raised from 0.45
+  // after moving to 768-dim embeddings: lower dimensions compress the cosine
+  // range, so the irrelevant "floor" rose to ~0.5 — 0.55 keeps it above that.
+  // Cosine similarity is bounded to [-1, 1], so a threshold > 1 would never match;
+  // accept only a value in (0, 1], otherwise fall back to the 0.55 default.
+  const parsedThreshold = parseFloat(process.env.RAG_SEARCH_THRESHOLD);
+  const searchThreshold =
+    Number.isFinite(parsedThreshold) && parsedThreshold > 0 && parsedThreshold <= 1
+      ? parsedThreshold
+      : 0.55;
 
-  // Filter matches. If none meet the threshold, we fall back to all sorted matches.
-  const thresholdMatches = scored.filter(
-    (item) => item.score >= searchThreshold,
-  );
-  const ranked = (thresholdMatches.length > 0 ? thresholdMatches : scored).sort(
-    (a, b) => b.score - a.score,
-  );
+  // Enforce the threshold: only chunks scoring >= it are eligible. If none qualify,
+  // `ranked` is empty and the empty-check below returns "no relevant content" — we
+  // deliberately do NOT fall back to all chunks, which would defeat the threshold
+  // and let an off-topic query pull in irrelevant context.
+  const ranked = scored
+    .filter((item) => item.score >= searchThreshold)
+    .sort((a, b) => b.score - a.score);
 
   // Take top k chunks
   const parsedk = process.env.RAG_SEARCH_K
