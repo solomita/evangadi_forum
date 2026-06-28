@@ -9,7 +9,9 @@ const EMBEDDING_MODEL =
 // question embeddings (one size across the app), and at ~4x less storage/compute
 // than the 3072 default keeps the in-app cosine scan fast. Query and chunk
 // vectors MUST use the same value — both functions below read this constant.
-const RAG_EMBEDDING_DIM = Number(process.env.RAG_EMBEDDING_DIM) || 768;
+const parsedRagDim = Number.parseInt(process.env.RAG_EMBEDDING_DIM, 10);
+const RAG_EMBEDDING_DIM =
+  Number.isInteger(parsedRagDim) && parsedRagDim > 0 ? parsedRagDim : 768;
 
 const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
