@@ -343,8 +343,15 @@ export const createDocumentFromUploadService= async (file, userId)=>{
         }
 
 
-        // 3 Chunking: Split text into overlapping segments 
-        const chunks = chunkText(text);
+        // 3 Chunking: split text into overlapping segments, sized via
+        // RAG_CHUNK_CHARS / RAG_CHUNK_OVERLAP (defaults 900 / 120).
+        const parsedChunkChars = Number.parseInt(process.env.RAG_CHUNK_CHARS, 10);
+        const parsedChunkOverlap = Number.parseInt(process.env.RAG_CHUNK_OVERLAP, 10);
+        const chunkChars =
+          Number.isInteger(parsedChunkChars) && parsedChunkChars > 0 ? parsedChunkChars : 900;
+        const chunkOverlap =
+          Number.isInteger(parsedChunkOverlap) && parsedChunkOverlap >= 0 ? parsedChunkOverlap : 120;
+        const chunks = chunkText(text, chunkChars, chunkOverlap);
         if (chunks.length === 0) {
             const err = new Error("No text found in PDF");
             err.statusCode = 400;
@@ -467,10 +474,12 @@ export const queryDocumentService = async ({ documentId, query, userId }) => {
     });
   }
 
-  // 5. Filter by threshold (optional, using process.env.RAG_SEARCH_THRESHOLD or fallback 0.45)
-  const searchThreshold = process.env.RAG_SEARCH_THRESHOLD
-    ? parseFloat(process.env.RAG_SEARCH_THRESHOLD)
-    : 0.45;
+  // 5. Filter by threshold (RAG_SEARCH_THRESHOLD, default 0.55). Raised from 0.45
+  // after moving to 768-dim embeddings: lower dimensions compress the cosine
+  // range, so the irrelevant "floor" rose to ~0.5 — 0.55 keeps it above that.
+  const parsedThreshold = parseFloat(process.env.RAG_SEARCH_THRESHOLD);
+  const searchThreshold =
+    Number.isFinite(parsedThreshold) && parsedThreshold > 0 ? parsedThreshold : 0.55;
 
   // Filter matches. If none meet the threshold, we fall back to all sorted matches.
   const thresholdMatches = scored.filter(
