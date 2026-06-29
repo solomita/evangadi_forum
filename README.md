@@ -68,8 +68,6 @@ flowchart LR
 
 **Guiding principle — fail _open_ for usability, fail _closed_ for integrity:** AI features (search, draft coach, answer-fit) degrade gracefully so an outage never blocks a user, while moderation falls **closed** to a deterministic keyword classifier so spam/harassment never slips through.
 
-> 📘 For the full deep-dive — middleware chain, the question-submission pipeline, the RAG retrieval sequence, the data model, sequence diagrams, and per-module detail — see **[Implementation.md](Implementation.md)**.
-
 ---
 
 ## Project Structure
@@ -114,7 +112,6 @@ ai-powered-forum-project/
 │   │   │                      #   MyQuestions, Admin, Leaderboard, Profile, RagDocuments
 │   │   └── services/          # api.client.js, auth/, question/, admin/, releases/, rag/
 │   └── package.json
-├── Implementation.md          # Full technical implementation guide
 ├── docs/                      # Local design artifacts — slides, PDFs (gitignored)
 ├── plans/                     # Feature planning documents
 └── tasks/                     # Milestone task breakdowns
