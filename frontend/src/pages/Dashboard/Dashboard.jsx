@@ -43,7 +43,9 @@ export default function Dashboard() {
       question => !Number(question.answerCount),
     ).length;
     const yoursTotal = questions.filter(
-      question => String(question.author?.id) === String(user?.id),
+      // Feed list returns the author as flat `userId`; semantic search nests it
+      // under `author`. Handle both shapes (same as isOwnThread below).
+      question => String(question.author?.id ?? question.userId) === String(user?.id),
     ).length;
 
     return [
