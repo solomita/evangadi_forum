@@ -42,9 +42,15 @@ export default function Dashboard() {
     const unansweredTotal = questions.filter(
       question => !Number(question.answerCount),
     ).length;
-    const yoursTotal = questions.filter(
-      question => String(question.author?.id) === String(user?.id),
-    ).length;
+    // Guard on a hydrated user first — otherwise String(user?.id) is 'undefined'
+    // and would match questions whose author is also missing. Mirrors isOwnThread.
+    const yoursTotal = !user?.id
+      ? 0
+      : questions.filter(
+          // Feed list returns the author as flat `userId`; semantic search nests
+          // it under `author`. Handle both shapes.
+          question => String(question.author?.id ?? question.userId) === String(user.id),
+        ).length;
 
     return [
       { label: 'Questions', value: questions.length },

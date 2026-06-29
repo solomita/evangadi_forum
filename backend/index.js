@@ -41,10 +41,10 @@ app.use(helmet());
 
 // ---------------------------------------------------------------------------
 // CORS — only allow the configured frontend origin.
-// Set FRONTEND_URL in .env (e.g. http://localhost:5000 for dev,
+// Set FRONTEND_URL in .env (e.g. http://localhost:5001 for dev,
 // https://your-domain.com for production).
 // ---------------------------------------------------------------------------
-const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5000';
+const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5001';
 app.use(cors({
   origin: allowedOrigin,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
