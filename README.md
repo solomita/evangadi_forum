@@ -485,7 +485,7 @@ Group 2 — 13 contributors. Roles reflect the area each person actually worked 
 |-----|------|-------|------|
 | 1 | Anteneh Alemayehu | antenehmekuriaw@gmail.com | Product Manager · Full-stack |
 | 2 | Waganesh Wogaye | waganeshadmase@gmail.com | Project Manager · Full-stack |
-| 3 | Destaw Getaw | destage.29@gmail.com | Frontend · DevOps |
+| 3 | Destaw Getaw | destage.29@gmail.com | Full-stack · DevOps |
 | 4 | Fiteh Tesfaye | fitehtesfaye@gmail.com | Full-stack |
 | 5 | Sofanit Dejene | sofanitdejene@gmail.com | Backend |
 | 6 | Solome Zewdu | solomezewdu125@gmail.com | Backend |
