@@ -15,6 +15,15 @@ const app = express();
 const port = process.env.PORT || 5004;
 
 // ---------------------------------------------------------------------------
+// Reverse proxy — in production the app sits behind a proxy (Render, Railway,
+// Fly, Nginx), so trust the first hop to use the real client IP for rate
+// limiting instead of the proxy's IP. Left off in dev to avoid spoofable XFF.
+// ---------------------------------------------------------------------------
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+// ---------------------------------------------------------------------------
 // Startup env validation — fail fast rather than crash mid-request.
 // ---------------------------------------------------------------------------
 const validateEnv = () => {
