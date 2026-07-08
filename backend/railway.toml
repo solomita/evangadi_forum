@@ -1,0 +1,11 @@
+# Railway service config for the backend. Set this service's Root Directory to
+# "backend" in the Railway dashboard so it is picked up.
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
