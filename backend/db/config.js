@@ -4,6 +4,10 @@ import mysql from 'mysql2/promise';
 
 // A pool is used instead of a single connection so multiple requests can
 // run queries concurrently without waiting for each other.
+// Managed MySQL providers (TiDB Cloud, Aiven, PlanetScale) require a TLS
+// connection. Set DB_SSL=true in production to enable it; local MySQL leaves it off.
+const useSsl = process.env.DB_SSL === 'true' || process.env.DB_SSL === 'require';
+
 export const db = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 3306),
@@ -11,6 +15,7 @@ export const db = mysql.createPool({
   // DB_PASS is a fallback alias kept for local dev convenience.
   password: process.env.DB_PASSWORD || process.env.DB_PASS || '',
   database: process.env.DB_NAME || 'evangadi_forum',
+  ssl: useSsl ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
 });
 
 // Guards against calling db.execute with undefined/null params, which would cause a runtime error. Also ensures params is an array or object, which is what mysql2 expects.

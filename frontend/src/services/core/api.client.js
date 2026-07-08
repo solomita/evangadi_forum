@@ -4,7 +4,12 @@ import axios from 'axios';
  * Configured axios instance for API communication.
  */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5004',
+  // In production (e.g. Vercel multi-service), frontend and backend share one
+  // origin, so an empty baseURL makes calls relative ("/api/...") and they route
+  // to the backend automatically. VITE_API_BASE_URL still overrides if set.
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL ??
+    (import.meta.env.PROD ? '' : 'http://localhost:5004'),
   timeout: 300000,
   headers: {
   },

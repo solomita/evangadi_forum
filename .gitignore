@@ -12,3 +12,6 @@ backend/email-preview.html
 backend/test-confirmation-email.html
 node_modules/
 uploads/
+
+# local docker-compose secrets
+.env
