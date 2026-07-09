@@ -88,16 +88,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Temporary diagnostic — reports whether AI env is wired, without leaking the key.
-app.get('/health/ai', (req, res) => {
-  const key = process.env.GEMINI_API_KEY || '';
-  res.json({
-    geminiKeyPresent: Boolean(key),
-    geminiKeyLength: key.length,
-    textModel: process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash-lite (default)',
-  });
-});
-
 app.use('/api', mainRouter);
 
 // errorHandler must be registered last so it catches errors from all routes.
