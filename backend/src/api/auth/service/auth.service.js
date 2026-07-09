@@ -115,13 +115,17 @@ export const registerService = async ({
     throw error;
   }
 
+  // When no email provider is configured (e.g. free hosting without Resend),
+  // set AUTH_AUTO_CONFIRM=true to mark new accounts verified so users can sign
+  // in immediately. Unset/false keeps the normal confirm-by-email flow.
+  const autoConfirm = process.env.AUTH_AUTO_CONFIRM === 'true';
   await safeExecute(
     `
-      INSERT INTO user_email_verifications (user_id, is_verified)
-      VALUES (?, 0)
-      ON DUPLICATE KEY UPDATE is_verified = VALUES(is_verified), verified_at = NULL
+      INSERT INTO user_email_verifications (user_id, is_verified, verified_at)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE is_verified = VALUES(is_verified), verified_at = VALUES(verified_at)
     `,
-    [result.insertId],
+    [result.insertId, autoConfirm ? 1 : 0, autoConfirm ? new Date() : null],
   );
 
   const confirmationToken = signFlowToken(
